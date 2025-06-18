@@ -1,0 +1,698 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>90-Day Glow-Up Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Custom Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="text-slate-700">
+
+    <div id="app" class="max-w-7xl mx-auto p-4 md:p-8">
+
+        <!-- Personalization Menu - Displayed first if not personalized -->
+        <section id="personalization-menu" class="view hidden">
+            <div class="personalization-form">
+                <h2 class="text-3xl font-bold text-center mb-6">🌟 Personalize Your Glow-Up Journey 🌟</h2>
+                <p class="text-secondary text-center mb-8">Tell us a little about yourself to tailor your experience!</p>
+
+                <div class="mb-5">
+                    <label for="user-name" class="font-semibold mb-2">Your Name:</label>
+                    <input type="text" id="user-name" placeholder="E.g., Alex, Jamie" class="focus:ring-amber-500 focus:border-amber-500">
+                </div>
+
+                <div class="mb-6">
+                    <label for="difficulty-select" class="font-semibold mb-2">Difficulty/Intensity:</label>
+                    <select id="difficulty-select" class="focus:ring-amber-500 focus:border-amber-500">
+                        <option value="casual">Casual (Relaxed pace)</option>
+                        <option value="normal" selected>Normal (Steady progress)</option>
+                        <option value="intense">Intense (Fast-paced growth)</option>
+                    </select>
+                </div>
+
+                <div class="mb-6">
+                    <label class="font-semibold mb-3">Skills You Want to Develop:</label>
+                    <div id="personalization-skills-grid" class="personalization-skills-grid">
+                        <!-- Skills will be dynamically loaded here -->
+                    </div>
+                </div>
+
+                <!-- Custom Affirmation Editor -->
+                <div class="mb-6">
+                    <label for="custom-affirmation-input" class="font-semibold mb-3">Add Your Own Affirmation:</label>
+                    <textarea id="custom-affirmation-input" rows="2" placeholder="E.g., I am capable of amazing things! ✨" class="focus:ring-amber-500 focus:border-amber-500"></textarea>
+                    <button id="add-affirmation-btn" class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-600 transition-colors text-sm">Add Affirmation</button>
+                    <div id="user-affirmations-list" class="mt-4 space-y-2 text-slate-600 text-sm">
+                        <!-- User-added affirmations will appear here -->
+                    </div>
+                </div>
+
+                <button id="start-glow-up-btn" class="w-full gradient-button text-white font-bold py-3 px-6 rounded-lg text-lg shadow-md hover:shadow-lg">Start Your Glow-Up!</button>
+            </div>
+        </section>
+
+        <!-- Main App Content - Hidden initially -->
+        <div id="app-main-content" class="hidden">
+            <header class="flex flex-col sm:flex-row justify-between items-center mb-10">
+                <div class="text-center sm:text-left mb-4 sm:mb-0">
+                    <h1 class="text-4xl md:text-5xl font-bold">Hello, <span id="display-user-name"></span>!</h1>
+                    <p class="mt-2 text-lg text-secondary">Your 90-Day Glow-Up: A complete guide to a more confident you.</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <!-- Theme select is now primarily in settings, but keeping it here for quick access -->
+                    <select id="theme-select" class="p-2 rounded-md bg-secondary border border-primary text-sm">
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                        <option value="synthwave">Synthwave</option>
+                        <option value="forest">Forest</option>
+                        <option value="ocean">Ocean</option>
+                        <option value="minimalist">Minimalist</option>
+                        <option value="retro">Retro</option>
+                        <option value="high-contrast">High Contrast</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+            </header>
+
+            <nav class="flex justify-center border-b border-primary mb-10 overflow-x-auto whitespace-nowrap pb-4">
+                <a data-view="dashboard" class="nav-link active py-4 px-2 sm:px-4 text-sm sm:text-base font-semibold">Dashboard</a>
+                <a data-view="plan" class="nav-link py-4 px-2 sm:px-4 text-sm sm:text-base font-semibold">90-Day Plan</a>
+                <a data-view="pillars" class="nav-link py-4 px-2 sm:px-4 text-sm sm:text-base font-semibold">The Pillars</a>
+                <a data-view="skills" class="nav-link py-4 px-2 sm:px-4 text-sm sm:text-base font-semibold">Skills</a>
+                <a data-view="daily-focus" class="nav-link py-4 px-2 sm:px-4 text-sm sm:text-base font-semibold">Daily Focus</a>
+                <a data-view="goals" class="nav-link py-4 px-2 sm:px-4 text-sm sm:text-base font-semibold">Goals</a>
+                <a data-view="shop" class="nav-link py-4 px-2 sm:px-4 text-sm sm:text-base font-semibold">Shop</a>
+                <a data-view="achievements" class="nav-link py-4 px-2 sm:px-4 text-sm sm:text-base font-semibold">Badges</a>
+                <a data-view="schedule" class="nav-link py-4 px-2 sm:px-4 text-sm sm:text-base font-semibold">Daily Schedule</a>
+                <a data-view="journal" class="nav-link py-4 px-2 sm:px-4 text-sm sm:text-base font-semibold">Journal</a>
+                <a data-view="analytics" class="nav-link py-4 px-2 sm:px-4 text-sm sm:text-base font-semibold">Analytics</a>
+                <a data-view="settings" class="nav-link py-4 px-2 sm:px-4 text-sm sm:text-base font-semibold">Settings</a>
+            </nav>
+
+            <main>
+                <!-- Dashboard Section -->
+                <section id="dashboard" class="view">
+                    <div class="text-center mb-12">
+                        <h2 class="text-3xl font-bold mb-2">✨ Today's Focus ✨</h2>
+                        <p class="text-secondary">Consistency is your superpower. Let's make today count!</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div class="md:col-span-2 card p-6">
+                            <div class="flex items-center mb-4">
+                                <span id="today-pillar-icon" class="text-3xl mr-3"></span>
+                                <h3 class="font-bold text-xl">Day <span id="today-day"></span> Mission</h3>
+                            </div>
+                            <p id="today-task" class="text-lg text-secondary leading-relaxed mb-6"></p>
+
+                            <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-6 shadow-sm" style="background-color: var(--bg-accent); border-color: var(--border-accent);">
+                                <h4 class="font-semibold text-amber-700 mb-2" style="color: var(--text-accent);">Daily Affirmation:</h4>
+                                <p id="daily-affirmation" class="text-amber-800 text-base italic" style="color: var(--text-accent);"></p>
+                            </div>
+
+                            <!-- Mood Tracker & Daily Highlight -->
+                            <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="mood-select" class="block font-semibold mb-2">How's your mood today?</label>
+                                    <select id="mood-select" class="w-full p-2 border rounded-md focus:ring-amber-500 focus:border-amber-500">
+                                        <option value="">Select Mood</option>
+                                        <option value="😃">😃 Great!</option>
+                                        <option value="😊">😊 Good</option>
+                                        <option value="😐">😐 Okay</option>
+                                        <option value="😔">😔 Down</option>
+                                        <option value="😡">😡 Frustrated</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="daily-highlight-input" class="block font-semibold mb-2">Today's Win/Highlight:</label>
+                                    <input type="text" id="daily-highlight-input" placeholder="What made you smile today?" class="w-full p-2 border rounded-md focus:ring-amber-500 focus:border-amber-500">
+                                </div>
+                            </div>
+                            
+                            <div class="flex flex-wrap justify-between items-center mt-6 mb-4 gap-2">
+                                <span class="token-display-box text-sm">
+                                    <span class="icon">🔥</span> Current Streak: <span id="current-streak-visual"></span>
+                                </span>
+                                <span class="token-display-box text-sm">
+                                    <span class="icon">🏆</span> Best Streak: <span id="best-streak">0</span>
+                                </span>
+                                <!-- New: Rest Days Available -->
+                                <span class="token-display-box text-sm">
+                                    <span class="icon">🛌</span> Rest Days: <span id="rest-days-display">0</span>
+                                </span>
+                            </div>
+
+                            <button id="complete-today-btn" class="w-full md:w-auto gradient-button text-white font-bold py-3 px-6 rounded-lg shadow-md mt-6">Mark as Complete</button>
+                        </div>
+
+                        <!-- Right Column -->
+                        <div class="space-y-6">
+                            <div class="card p-6">
+                                <h3 class="font-bold text-xl mb-4">📊 Progress Tracker</h3>
+                                <div class="chart-container">
+                                    <canvas id="progressChart"></canvas>
+                                </div>
+                                <p id="progress-message" class="progress-message text-center"></p>
+                            </div>
+
+                            <!-- New: Quick Actions -->
+                            <div class="card p-6">
+                                <h3 class="font-bold text-xl mb-4">⚡ Quick Actions</h3>
+                                <div class="flex flex-col space-y-3">
+                                    <button id="goto-daily-focus-btn" class="w-full gradient-button text-white font-bold py-2 px-4 rounded-lg shadow-sm">
+                                        🎯 Do Daily Skill Focus
+                                    </button>
+                                    <button id="view-active-goals-btn" class="w-full bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg shadow-sm hover:bg-indigo-600 transition-colors">
+                                        ✔️ View Active Goals
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- New: Upcoming Missions -->
+                            <div class="card p-6">
+                                <h3 class="font-bold text-xl mb-4">📆 Upcoming Missions</h3>
+                                <div id="upcoming-missions-list" class="space-y-3 text-secondary">
+                                    <p class="text-sm italic text-secondary">Loading...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 90-Day Plan Section -->
+                <section id="plan" class="view hidden">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold mb-2">Your 90-Day Calendar</h2>
+                        <p class="text-secondary">Click on any day to see your mission. Today is highlighted for you!</p>
+                    </div>
+                    <div id="calendar-grid" class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-4">
+                    </div>
+                </section>
+
+                <!-- Pillars Main Grid Section -->
+                <section id="pillars" class="view hidden">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold mb-2">The Six Pillars of Your Glow-Up</h2>
+                        <p class="text-secondary">These are the core principles behind your daily actions. Click each one to learn more.</p>
+                    </div>
+                    <div id="pillars-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Pillar cards will be rendered here by JS -->
+                    </div>
+                </section>
+
+                <!-- Pillar Detail View Section (Hidden by default) -->
+                <section id="pillar-detail-view" class="detail-view hidden p-4 card max-w-4xl mx-auto">
+                    <button id="back-to-pillars-btn" class="text-amber-500 hover:text-amber-600 font-semibold mb-6 flex items-center" style="color: var(--brand-primary); hover:color: var(--brand-secondary);">
+                        <span class="text-xl mr-2">←</span> Back to Pillars
+                    </button>
+                    <div class="flex items-center mb-4">
+                        <span id="pillar-detail-icon" class="text-4xl mr-4"></span>
+                        <h3 id="pillar-detail-title" class="font-bold text-2xl"></h3>
+                    </div>
+                    <p id="pillar-detail-content" class="text-secondary mb-6 leading-relaxed"></p>
+
+                    <h4 class="font-semibold text-xl mb-3">Actionable Steps:</h4>
+                    <div id="pillar-detail-tasks" class="space-y-2 mb-6">
+                        <!-- Pillar tasks will be rendered here by JS -->
+                    </div>
+                    <p class="mt-4 text-sm font-medium text-secondary">Progress: <span id="pillar-progress-text" class="font-bold text-amber-600" style="color: var(--brand-primary);">0%</span> of tasks completed for this pillar.</p>
+                    <div class="w-full bg-slate-200 rounded-full h-2.5 mt-2" style="background-color: var(--border-primary);">
+                        <div id="pillar-progress-bar" class="bg-amber-500 h-2.5 rounded-full" style="width: 0%; background-color: var(--brand-primary);"></div>
+                    </div>
+
+                    <!-- Goals Section for Pillar -->
+                    <div class="goals-section">
+                        <h4 class="font-semibold text-xl mb-3">Your Goals for this Pillar:</h4>
+                        <div id="pillar-goals-list" class="space-y-2 mb-4">
+                            <!-- Goals will be rendered here -->
+                        </div>
+                        <div class="flex">
+                            <input type="text" id="add-pillar-goal-input" class="add-goal-input focus:ring-violet-400 focus:border-violet-400" placeholder="Add a new goal...">
+                            <button id="add-pillar-goal-btn" class="add-goal-btn">Add</button>
+                        </div>
+                    </div>
+                </section>
+
+
+                <!-- Skills Main Grid Section -->
+                <section id="skills" class="view hidden">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold mb-2">Level Up Your Skills!</h2>
+                        <p class="text-secondary">Explore new interests and develop valuable abilities. Click each skill area to get started!</p>
+                    </div>
+                    <div id="skills-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Skill cards will be rendered here by JS -->
+                    </div>
+                </section>
+
+                <!-- Skill Detail View Section (Hidden by default) -->
+                <section id="skill-detail-view" class="detail-view hidden p-4 card max-w-4xl mx-auto">
+                    <button id="back-to-skills-btn" class="text-amber-500 hover:text-amber-600 font-semibold mb-6 flex items-center" style="color: var(--brand-primary); hover:color: var(--brand-secondary);">
+                        <span class="text-xl mr-2">←</span> Back to Skills
+                    </button>
+                    <div class="flex items-center mb-4">
+                        <span id="skill-detail-icon" class="text-4xl mr-4"></span>
+                        <h3 id="skill-detail-title" class="font-bold text-2xl"></h3>
+                    </div>
+                    <p id="skill-detail-content" class="text-secondary mb-6 leading-relaxed"></p>
+
+                    <h4 class="font-semibold text-xl mb-3">Practice Tasks:</h4>
+                    <div id="skill-detail-tasks" class="space-y-2 mb-6">
+                        <!-- Skill tasks will be rendered here by JS -->
+                    </div>
+                    <p class="mt-4 text-sm font-medium text-secondary">Progress: <span id="skill-progress-text" class="font-bold text-amber-600" style="color: var(--brand-primary);">0%</span> of tasks completed for this skill.</p>
+                    <div class="w-full bg-slate-200 rounded-full h-2.5 mt-2" style="background-color: var(--border-primary);">
+                        <div id="skill-progress-bar" class="bg-amber-500 h-2.5 rounded-full" style="width: 0%; background-color: var(--brand-primary);"></div>
+                    </div>
+
+                    <!-- Goals Section for Skill -->
+                    <div class="goals-section">
+                        <h4 class="font-semibold text-xl mb-3">Your Goals for this Skill:</h4>
+                        <div id="skill-goals-list" class="space-y-2 mb-4">
+                            <!-- Goals will be rendered here -->
+                        </div>
+                        <div class="flex">
+                            <input type="text" id="add-skill-goal-input" class="add-goal-input focus:ring-violet-400 focus:border-violet-400" placeholder="Add a new goal...">
+                            <button id="add-skill-goal-btn" class="add-goal-btn">Add</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Daily Skill Focus Section -->
+                <section id="daily-focus" class="view hidden">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold mb-2">🎯 Daily Skill Focus 🎯</h2>
+                        <p class="text-secondary">Complete these tasks to earn Glow Tokens!</p>
+                        <div class="flex justify-center mt-4 mb-6">
+                            <span class="token-display-box">
+                                <span class="icon">✨</span> Your Glow Tokens: <span id="tokens-display">0</span>
+                            </span>
+                        </div>
+                        <p class="text-sm text-secondary">Next tasks refresh in: <span id="countdown-timer" class="font-semibold text-primary"></span></p>
+                    </div>
+                    <div class="card p-6 max-w-2xl mx-auto">
+                        <div id="daily-tasks-container" class="space-y-3 mb-6">
+                            <!-- Daily skill tasks will be dynamically loaded here -->
+                            <p class="text-center text-secondary italic" id="daily-tasks-loading">Generating daily tasks...</p>
+                        </div>
+                        <button id="claim-tokens-btn" class="w-full gradient-button text-white font-bold py-3 px-6 rounded-lg shadow-md" disabled>
+                            Claim Your 3 Tokens! ✨
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Global Goals Section (New) -->
+                <section id="goals" class="view hidden">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold mb-2">🌟 Your Personal Goals 🌟</h2>
+                        <p class="text-secondary">Set big goals and track your progress here!</p>
+                    </div>
+                    <div class="card p-6 max-w-2xl mx-auto">
+                        <h4 class="font-semibold text-xl mb-3">My Goals:</h4>
+                        <div id="global-goals-list" class="space-y-2 mb-4">
+                            <!-- Global goals will be rendered here -->
+                            <p class="text-secondary italic text-sm">No global goals set yet. Add your first one!</p>
+                        </div>
+                        <div class="flex">
+                            <input type="text" id="add-global-goal-input" class="add-goal-input focus:ring-violet-400 focus:border-violet-400" placeholder="Add a new personal goal...">
+                            <button id="add-global-goal-btn" class="add-goal-btn">Add</button>
+                        </div>
+                    </div>
+                </section>
+
+
+                <!-- Shop Section -->
+                <section id="shop" class="view hidden">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold mb-2">🛍️ The Glow-Up Shop 🛍️</h2>
+                        <p class="text-secondary">Spend your hard-earned Glow Tokens!</p>
+                        <div class="flex justify-center mt-4 mb-6">
+                            <span class="token-display-box">
+                                <span class="icon">✨</span> Your Glow Tokens: <span id="shop-tokens-display">0</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div id="shop-items-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                        <!-- Shop items will be rendered here by JS -->
+                    </div>
+                </section>
+
+                <!-- Achievements / Badges Section -->
+                <section id="achievements" class="view hidden">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold mb-2">🏅 Your Achievements 🏅</h2>
+                        <p class="text-secondary">Milestones on your Glow-Up Journey!</p>
+                    </div>
+                    <div id="badges-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                        <!-- Badges will be rendered here by JS -->
+                        <p class="text-center text-secondary italic col-span-full hidden" id="no-badges-msg">No badges earned yet. Keep going!</p>
+                    </div>
+                </section>
+
+                <!-- Daily Schedule Section -->
+                <section id="schedule" class="view hidden">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold mb-2">Your Daily Blueprint</h2>
+                        <p class="text-secondary">A template for success. Use this to structure your days.</p>
+                    </div>
+                    <div class="flex justify-center mb-6">
+                        <button id="weekday-btn" class="schedule-btn bg-amber-500 text-white py-2 px-6 rounded-l-lg font-semibold shadow-md hover:shadow-lg transition-shadow">Weekday</button>
+                        <button id="weekend-btn" class="schedule-btn bg-slate-200 text-slate-600 py-2 px-6 rounded-r-lg font-semibold shadow-md hover:shadow-lg transition-shadow">Weekend</button>
+                    </div>
+                    <div id="schedule-content" class="card p-6 sm:p-8 max-w-4xl mx-auto">
+                    </div>
+                </section>
+
+                <!-- Journal Section (New) -->
+                <section id="journal" class="view hidden">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold mb-2">✍️ Your Daily Journal ✍️</h2>
+                        <p class="text-secondary">Reflect on your journey and capture your thoughts.</p>
+                    </div>
+                    <div class="card p-6 max-w-3xl mx-auto mb-8">
+                        <h3 class="font-bold text-xl mb-3">Today's Entry</h3>
+                        <p id="journal-prompt" class="text-secondary italic mb-4">Loading prompt...</p>
+                        <textarea id="journal-input" rows="8" class="w-full p-3 border rounded-lg focus:ring-brand-primary focus:border-brand-primary mb-4" placeholder="What's on your mind today? What did you achieve or learn?"></textarea>
+                        <div class="flex justify-between items-center mb-4">
+                            <label for="journal-mood-select" class="block font-semibold">Mood for this entry:</label>
+                            <select id="journal-mood-select" class="p-2 border rounded-md focus:ring-brand-primary focus:border-brand-primary">
+                                <option value="">Select Mood</option>
+                                <option value="😃">😃 Great!</option>
+                                <option value="😊">😊 Good</option>
+                                <option value="😐">😐 Okay</option>
+                                <option value="😔">😔 Down</option>
+                                <option value="😡">😡 Frustrated</option>
+                            </select>
+                        </div>
+                        <button id="save-journal-btn" class="w-full gradient-button py-2 px-4 rounded-lg font-semibold">Save Entry</button>
+                    </div>
+                    <div class="card p-6 max-w-3xl mx-auto">
+                        <h3 class="font-bold text-xl mb-4">Past Entries</h3>
+                        <div class="mb-4 flex flex-col sm:flex-row gap-4">
+                            <input type="date" id="journal-filter-date" class="p-2 border rounded-lg flex-grow">
+                            <input type="text" id="journal-search-input" placeholder="Search entries..." class="p-2 border rounded-lg flex-grow">
+                            <button id="clear-journal-filters" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300">Clear Filters</button>
+                        </div>
+                        <div id="journal-entries-list" class="space-y-4">
+                            <p class="text-center text-secondary italic">No journal entries yet.</p>
+                            <!-- Journal entries will be dynamically loaded here -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Analytics Section (New) -->
+                <section id="analytics" class="view hidden">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold mb-2">📈 Your Glow-Up Analytics 📉</h2>
+                        <p class="text-secondary">Dive deep into your progress and insights.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                        <!-- Overall Daily Completion Chart -->
+                        <div class="card p-6">
+                            <h3 class="font-bold text-xl mb-4">Daily Completion Rate</h3>
+                            <div class="chart-container">
+                                <canvas id="dailyCompletionChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Streak History Chart -->
+                        <div class="card p-6">
+                            <h3 class="font-bold text-xl mb-4">Streak History</h3>
+                            <div class="chart-container">
+                                <canvas id="streakHistoryChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mood Trend Chart -->
+                    <div class="card p-6 max-w-4xl mx-auto mb-8">
+                        <h3 class="font-bold text-xl mb-4">Mood Trends Over Time</h3>
+                        <div class="chart-container" style="height: 300px;">
+                            <canvas id="moodTrendChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Pillars & Skills Progress (from image) -->
+                    <div class="card p-6 max-w-3xl mx-auto mb-8">
+                        <h3 class="font-bold text-xl mb-4">📚 Your Pillars & Skills Progress</h3>
+                        <div id="analytics-pillars-skills-progress" class="space-y-4">
+                            <!-- Content for pillars and skills progress will be generated here -->
+                            <p class="text-sm italic text-secondary">Progress overview will appear here.</p>
+                        </div>
+                    </div>
+
+                    <!-- Goal Progress Overview -->
+                    <div class="card p-6 max-w-3xl mx-auto mb-8">
+                        <h3 class="font-bold text-xl mb-4">🎯 Goal Progress Overview</h3>
+                        <div id="analytics-goal-progress" class="space-y-3">
+                            <p class="text-sm italic text-secondary">No goals to display yet.</p>
+                        </div>
+                    </div>
+
+                    <!-- Achievements Overview -->
+                    <div class="card p-6 max-w-3xl mx-auto">
+                        <h3 class="font-bold text-xl mb-4">🏆 Achievements Earned</h3>
+                        <div id="analytics-achievements-overview" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                            <p class="text-sm italic text-secondary col-span-full">No achievements earned yet.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Settings Section (New) -->
+                <section id="settings" class="view hidden">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold mb-2">⚙️ Settings & Customization ⚙️</h2>
+                        <p class="text-secondary">Tailor your Glow-Up experience to your needs.</p>
+                    </div>
+
+                    <div class="card p-6 max-w-3xl mx-auto">
+                        <div class="flex border-b border-primary mb-6">
+                            <button class="tab-button active-tab" data-tab="general">General</button>
+                            <button class="tab-button" data-tab="themes">Themes</button>
+                            <button class="tab-button" data-tab="content">Content</button>
+                            <button class="tab-button" data-tab="data">Data</button>
+                        </div>
+
+                        <!-- General Settings Tab -->
+                        <div id="settings-tab-general" class="tab-content">
+                            <h3 class="font-bold text-xl mb-4">General Preferences</h3>
+                            <div class="mb-5">
+                                <label for="settings-user-name" class="font-semibold mb-2 block">Your Name:</label>
+                                <input type="text" id="settings-user-name" class="w-full p-2 border rounded-md focus:ring-brand-primary focus:border-brand-primary">
+                            </div>
+                            <div class="mb-5">
+                                <label for="settings-difficulty-select" class="font-semibold mb-2 block">Difficulty/Intensity:</label>
+                                <select id="settings-difficulty-select" class="w-full p-2 border rounded-md focus:ring-brand-primary focus:border-brand-primary">
+                                    <option value="casual">Casual (Relaxed pace)</option>
+                                    <option value="normal">Normal (Steady progress)</option>
+                                    <option value="intense">Intense (Fast-paced growth)</option>
+                                </select>
+                            </div>
+                            <div class="mb-5 flex items-center justify-between">
+                                <label for="notification-toggle" class="font-semibold">Enable Daily Notifications:</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="notification-toggle">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="mb-5">
+                                <h4 class="font-semibold mb-2">Accessibility Settings:</h4>
+                                <div class="flex items-center space-x-4">
+                                    <label class="flex items-center">
+                                        <input type="checkbox" id="reduce-motion-toggle" class="mr-2">
+                                        Reduce Motion
+                                    </label>
+                                    <!-- Add more accessibility options here later if desired -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Themes Settings Tab -->
+                        <div id="settings-tab-themes" class="tab-content hidden">
+                            <h3 class="font-bold text-xl mb-4">Theme Settings</h3>
+                            <div class="mb-5">
+                                <label for="settings-theme-select" class="font-semibold mb-2 block">Select Theme:</label>
+                                <select id="settings-theme-select" class="w-full p-2 border rounded-md focus:ring-brand-primary focus:border-brand-primary">
+                                    <option value="light">Light</option>
+                                    <option value="dark">Dark</option>
+                                    <option value="synthwave">Synthwave</option>
+                                    <option value="forest">Forest</option>
+                                    <option value="ocean">Ocean</option>
+                                    <option value="minimalist">Minimalist</option>
+                                    <option value="retro">Retro</option>
+                                    <option value="high-contrast">High Contrast</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                            </div>
+                            <div id="custom-theme-builder" class="mt-6 p-4 border rounded-lg bg-bg-accent hidden">
+                                <h4 class="font-bold text-lg mb-4">Custom Theme Builder</h4>
+                                <p class="text-secondary text-sm mb-4">Choose your own colors to create a unique theme!</p>
+                                <div class="custom-theme-color-picker">
+                                    <div class="color-picker-item">
+                                        <label for="custom-bg-primary">Background Primary</label>
+                                        <input type="color" id="custom-bg-primary" value="#f0f4f8" class="color-input">
+                                    </div>
+                                    <div class="color-picker-item">
+                                        <label for="custom-bg-secondary">Background Secondary</label>
+                                        <input type="color" id="custom-bg-secondary" value="#ffffff" class="color-input">
+                                    </div>
+                                    <div class="color-picker-item">
+                                        <label for="custom-bg-accent">Background Accent</label>
+                                        <input type="color" id="custom-bg-accent" value="#fffbeb" class="color-input">
+                                    </div>
+                                    <div class="color-picker-item">
+                                        <label for="custom-text-primary">Text Primary</label>
+                                        <input type="color" id="custom-text-primary" value="#1f2937" class="color-input">
+                                    </div>
+                                    <div class="color-picker-item">
+                                        <label for="custom-text-secondary">Text Secondary</label>
+                                        <input type="color" id="custom-text-secondary" value="#4b5563" class="color-input">
+                                    </div>
+                                    <div class="color-picker-item">
+                                        <label for="custom-text-accent">Text Accent</label>
+                                        <input type="color" id="custom-text-accent" value="#78350f" class="color-input">
+                                    </div>
+                                    <div class="color-picker-item">
+                                        <label for="custom-border-primary">Border Primary</label>
+                                        <input type="color" id="custom-border-primary" value="#e5e7eb" class="color-input">
+                                    </div>
+                                    <div class="color-picker-item">
+                                        <label for="custom-border-accent">Border Accent</label>
+                                        <input type="color" id="custom-border-accent" value="#fcd34d" class="color-input">
+                                    </div>
+                                    <div class="color-picker-item">
+                                        <label for="custom-brand-primary">Brand Primary</label>
+                                        <input type="color" id="custom-brand-primary" value="#f59e0b" class="color-input">
+                                    </div>
+                                    <div class="color-picker-item">
+                                        <label for="custom-brand-secondary">Brand Secondary</label>
+                                        <input type="color" id="custom-brand-secondary" value="#fbbf24" class="color-input">
+                                    </div>
+                                    <div class="color-picker-item">
+                                        <label for="custom-shadow-color">Shadow Color</label>
+                                        <input type="color" id="custom-shadow-color" value="#000000" class="color-input">
+                                    </div>
+                                </div>
+                                <button id="save-custom-theme-btn" class="w-full gradient-button mt-6 py-2 px-4 rounded-lg font-semibold">Apply Custom Theme</button>
+                            </div>
+                        </div>
+
+                        <!-- Content Settings Tab -->
+                        <div id="settings-tab-content" class="tab-content hidden">
+                            <h3 class="font-bold text-xl mb-4">Content Customization</h3>
+                            <div class="mb-6">
+                                <h4 class="font-semibold mb-2">Manage Affirmations:</h4>
+                                <textarea id="settings-custom-affirmation-input" rows="2" placeholder="Add a new affirmation..." class="w-full p-2 border rounded-md mb-2"></textarea>
+                                <button id="settings-add-affirmation-btn" class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-600 transition-colors text-sm">Add Affirmation</button>
+                                <div id="settings-user-affirmations-list" class="mt-4 space-y-2 text-slate-600 text-sm">
+                                    <!-- User-added affirmations will appear here -->
+                                </div>
+                            </div>
+                            <div class="mb-6">
+                                <h4 class="font-semibold mb-2">Manage Custom Pillars:</h4>
+                                <p class="text-secondary text-sm mb-3">Add and edit your own personal growth pillars.</p>
+                                <div id="settings-custom-pillars-list" class="space-y-3">
+                                    <!-- Custom pillars will be rendered here -->
+                                    <p class="text-secondary italic text-sm">No custom pillars yet.</p>
+                                </div>
+                                <button id="add-custom-pillar-btn" class="w-full bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-600 transition-colors text-sm mt-4">Add New Pillar</button>
+                            </div>
+                             <div class="mb-6">
+                                <h4 class="font-semibold mb-2">Manage Custom Skills:</h4>
+                                <p class="text-secondary text-sm mb-3">Add and edit your own personal skills to develop.</p>
+                                <div id="settings-custom-skills-list" class="space-y-3">
+                                    <!-- Custom skills will be rendered here -->
+                                    <p class="text-secondary italic text-sm">No custom skills yet.</p>
+                                </div>
+                                <button id="add-custom-skill-btn" class="w-full bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-600 transition-colors text-sm mt-4">Add New Skill</button>
+                            </div>
+                        </div>
+
+                        <!-- Data Management Tab -->
+                        <div id="settings-tab-data" class="tab-content hidden">
+                            <h3 class="font-bold text-xl mb-4">Data Management</h3>
+                            <div class="mb-5">
+                                <p class="text-secondary mb-3">Export your progress data as a JSON file.</p>
+                                <button id="export-data-btn" class="w-full bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-emerald-600 transition-colors">Export Data</button>
+                            </div>
+                            <div class="mb-5">
+                                <p class="text-secondary mb-3">Import previous data to restore your progress.</p>
+                                <input type="file" id="import-data-input" accept=".json" class="w-full p-2 border rounded-md mb-2">
+                                <button id="import-data-btn" class="w-full bg-cyan-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-cyan-600 transition-colors" disabled>Import Data</button>
+                            </div>
+                            <div class="mb-5">
+                                <p class="text-secondary mb-3 text-red-600 font-semibold">Reset all your progress and start fresh. This action cannot be undone!</p>
+                                <button id="reset-progress-btn" class="w-full bg-red-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-red-600 transition-colors">Reset All Progress</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modals (Task Modal, Message Box, Why Missed Modal, Custom Pillar/Skill Modal) -->
+    <div id="task-modal" class="modal-overlay hidden">
+        <div class="card p-6 w-11/12 max-w-md text-center">
+            <h3 class="font-bold text-2xl mb-4">Day <span id="modal-day"></span> Mission</h3>
+            <p id="modal-task" class="text-secondary mb-6"></p>
+            <button id="close-modal-btn" class="w-full bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-lg hover:bg-slate-300 transition-colors shadow-sm">Close</button>
+        </div>
+    </div>
+    
+    <div id="message-box" class="fixed bottom-5 right-5 bg-green-500 text-white py-3 px-5 rounded-lg shadow-xl transform translate-y-20 opacity-0 transition-all duration-500 z-50">
+        Task marked as complete!
+    </div>
+
+    <!-- Why Missed Modal -->
+    <div id="missed-reason-modal" class="modal-overlay hidden">
+        <div class="missed-reason-modal">
+            <h3 class="font-bold text-xl mb-4">Why was this day a miss? 🤔</h3>
+            <p class="text-secondary mb-4">Understanding helps us improve!</p>
+            <textarea id="missed-reason-input" rows="3" class="w-full p-2 border rounded-md focus:ring-amber-500 focus:border-amber-500 mb-4" placeholder="E.g., Too busy, forgot, not feeling well, challenging task..."></textarea>
+            <button id="submit-missed-reason-btn" class="w-full bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition-colors shadow-sm">Submit Reason</button>
+        </div>
+    </div>
+
+    <!-- Custom Pillar/Skill Modal -->
+    <div id="custom-pillar-skill-modal" class="modal-overlay hidden">
+        <div class="missed-reason-modal"> <!-- Reusing some styling from missed-reason-modal -->
+            <h3 id="custom-modal-title" class="font-bold text-xl mb-4">Add New Pillar</h3>
+            <div class="mb-4">
+                <label for="custom-name-input" class="block font-semibold mb-2">Name:</label>
+                <input type="text" id="custom-name-input" class="w-full p-2 border rounded-md focus:ring-brand-primary focus:border-brand-primary" placeholder="e.g., Financial Literacy">
+            </div>
+            <div class="mb-4">
+                <label for="custom-icon-input" class="block font-semibold mb-2">Icon (Emoji or Font Awesome class):</label>
+                <input type="text" id="custom-icon-input" class="w-full p-2 border rounded-md focus:ring-brand-primary focus:border-brand-primary" placeholder="e.g., 💰 or fas fa-chart-line">
+                <p class="text-xs text-secondary mt-1">Visit <a href="https://fontawesome.com/icons" target="_blank" class="text-blue-500 hover:underline">Font Awesome</a> for classes.</p>
+            </div>
+            <div class="mb-4">
+                <label for="custom-content-input" class="block font-semibold mb-2">Description:</label>
+                <textarea id="custom-content-input" rows="4" class="w-full p-2 border rounded-md focus:ring-brand-primary focus:border-brand-primary" placeholder="A brief description of this pillar/skill."></textarea>
+            </div>
+            <div class="mb-4">
+                <label for="custom-tasks-input" class="block font-semibold mb-2">Tasks (one per line):</label>
+                <textarea id="custom-tasks-input" rows="6" class="w-full p-2 border rounded-md focus:ring-brand-primary focus:border-brand-primary" placeholder="Task 1&#10;Task 2&#10;Task 3"></textarea>
+                <p class="text-xs text-secondary mt-1">Enter each task on a new line.</p>
+            </div>
+            <div class="flex justify-end space-x-2">
+                <button id="cancel-custom-btn" class="bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors shadow-sm">Cancel</button>
+                <button id="save-custom-btn" class="gradient-button text-white font-bold py-2 px-4 rounded-lg shadow-sm">Save</button>
+            </div>
+        </div>
+    </div>
+  
+    <script src="script.js"></script>
+</body>
+</html>
