@@ -1,4 +1,4 @@
-// script.js
+// script.js kibidii
 
 const TOTAL_CHALLENGE_DAYS = 90;
 const TOKEN_FOR_DAILY_FOCUS_COMPLETION = 3; // Tokens gained per daily focus completion
