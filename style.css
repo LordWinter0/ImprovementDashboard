@@ -2,719 +2,860 @@
 
 /* CSS Variables for Theming */
 :root {
-    --bg-primary: #f0f4f8; /* Light background for overall app */
-    --bg-secondary: #ffffff; /* Card backgrounds, form elements */
-    --bg-accent: #fffbeb; /* Highlighted elements, subtle accents */
-    --text-primary: #1f2937; /* Main text color */
-    --text-secondary: #4b5563; /* Secondary text, descriptions */
-    --text-accent: #78350f; /* Accent text, often for brand-related items */
-    --border-primary: #e5e7eb; /* General border color */
-    --border-accent: #fcd34d; /* Accent border, often for interactive elements */
-    --brand-primary: #f59e0b; /* Main brand color, for active states, buttons */
-    --brand-secondary: #fbbf24; /* Secondary brand color, for gradients, hovers */
-    --shadow-color: rgba(0,0,0,0.1); /* Shadow color for cards, modals */
+    --bg-primary: #f0f4f8; /* Light gray background for main app */
+    --bg-secondary: #ffffff; /* White background for cards/sections */
+    --bg-accent: #fffbeb; /* Accent background, e.g., for affirmations */
+    --text-primary: #1f2937; /* Dark text for headings, main content */
+    --text-secondary: #4b5563; /* Lighter text for descriptions, secondary info */
+    --text-accent: #78350f; /* Accent text color, e.g., for affirmation text */
+    --border-primary: #e5e7eb; /* Light border color */
+    --border-accent: #fcd34d; /* Accent border color */
+    --brand-primary: #f59e0b; /* Main brand color (amber) */
+    --brand-secondary: #fbbf24; /* Secondary brand color (lighter amber) */
+    --shadow-color: rgba(0,0,0,0.1); /* Shadow color for cards */
+    --active-nav-bg: var(--brand-primary); /* Background for active nav link */
+    --active-nav-text: white; /* Text for active nav link */
+    --button-gradient-start: var(--brand-primary);
+    --button-gradient-end: var(--brand-secondary);
+    --input-focus-ring: var(--brand-primary);
+    --link-color: #3b82f6; /* Tailwind blue-500 */
+    --completed-day-bg: #dcfce7; /* green-100 */
+    --completed-day-text: #166534; /* green-900 */
+    --completed-all-day-bg: #a7f3d0; /* green-200 */
+    --completed-all-day-text: #065f46; /* green-800 */
+    --completed-focus-day-bg: #f0fdf4; /* green-50 */
+    --missed-day-bg: #fee2e2; /* red-100 */
+    --missed-day-text: #b91c1c; /* red-700 */
 }
 
-/* Dark Theme */
+/* --- Dark Theme --- */
 [data-theme="dark"] {
-    --bg-primary: #111827;
-    --bg-secondary: #1f2937;
-    --bg-accent: #374151;
-    --text-primary: #f9fafb;
-    --text-secondary: #d1d5db;
-    --text-accent: #fcd34d;
-    --border-primary: #374151;
-    --border-accent: #f59e0b;
-    --brand-primary: #f59e0b;
-    --brand-secondary: #fbbf24;
-    --shadow-color: rgba(0,0,0,0.2);
+    --bg-primary: #111827; /* Dark blue-gray */
+    --bg-secondary: #1f2937; /* Even darker blue-gray for cards */
+    --bg-accent: #2e1065; /* Dark violet accent */
+    --text-primary: #f9fafb; /* Off-white */
+    --text-secondary: #d1d5db; /* Light gray */
+    --text-accent: #fcd34d; /* Yellow accent */
+    --border-primary: #374151; /* Darker border */
+    --border-accent: #8b5cf6; /* Violet accent */
+    --brand-primary: #a78bfa; /* Violet */
+    --brand-secondary: #c4b5fd; /* Lighter violet */
+    --shadow-color: rgba(0,0,0,0.3);
+    --active-nav-bg: var(--brand-primary);
+    --active-nav-text: white;
+    --button-gradient-start: var(--brand-primary);
+    --button-gradient-end: var(--brand-secondary);
+    --input-focus-ring: var(--brand-primary);
+    --link-color: #818cf8; /* indigo-300 */
+    --completed-day-bg: #10b981; /* green-500 */
+    --completed-day-text: white;
+    --completed-all-day-bg: #059669; /* green-600 */
+    --completed-all-day-text: white;
+    --completed-focus-day-bg: #064e3b; /* green-900 */
+    --missed-day-bg: #dc2626; /* red-600 */
+    --missed-day-text: white;
 }
 
-/* Synthwave Theme */
+/* --- Synthwave Theme --- */
 [data-theme="synthwave"] {
-    --bg-primary: #2d1b47;
-    --bg-secondary: #1e1533;
-    --bg-accent: #4a2a67;
-    --text-primary: #f1c40f;
-    --text-secondary: #9b59b6;
-    --text-accent: #ffffff;
-    --border-primary: #4a2a67;
-    --border-accent: #ff7ac6;
-    --brand-primary: #ff7ac6;
-    --brand-secondary: #00e5ff;
-    --shadow-color: rgba(0,0,0,0.25);
+    --bg-primary: #2d004d;
+    --bg-secondary: #0a011a;
+    --bg-accent: #4d0080;
+    --text-primary: #e0e0e0;
+    --text-secondary: #a0a0a0;
+    --text-accent: #ff00ff; /* Neon pink */
+    --border-primary: #5a008a;
+    --border-accent: #00ffff; /* Neon cyan */
+    --brand-primary: #ff00ff; /* Neon pink */
+    --brand-secondary: #00ffff; /* Neon cyan */
+    --shadow-color: rgba(255,0,255,0.3);
+    --active-nav-bg: var(--brand-primary);
+    --active-nav-text: black;
+    --button-gradient-start: #ff00ff;
+    --button-gradient-end: #00ffff;
+    --input-focus-ring: #ff00ff;
+    --link-color: #00ffff;
+    --completed-day-bg: #32cd32; /* LimeGreen */
+    --completed-day-text: black;
+    --completed-all-day-bg: #00fa9a; /* MediumSpringGreen */
+    --completed-all-day-text: black;
+    --completed-focus-day-bg: #8a2be2; /* BlueViolet */
+    --missed-day-bg: #ff4500; /* OrangeRed */
+    --missed-day-text: white;
 }
 
-/* Forest Theme */
+/* --- Forest Theme --- */
 [data-theme="forest"] {
-    --bg-primary: #1a2e29;
-    --bg-secondary: #243831;
-    --bg-accent: #3c5a4f;
-    --text-primary: #a7f3d0;
-    --text-secondary: #6ee7b7;
-    --text-accent: #ffffff;
-    --border-primary: #3c5a4f;
-    --border-accent: #34d399;
-    --brand-primary: #34d399;
-    --brand-secondary: #a7f3d0;
-    --shadow-color: rgba(0,0,0,0.25);
+    --bg-primary: #e0f2f7; /* Light sky blue */
+    --bg-secondary: #f0fff0; /* Honeydew */
+    --bg-accent: #d4edda; /* Light mint green */
+    --text-primary: #2f4f4f; /* Dark slate gray */
+    --text-secondary: #5f9ea0; /* Cadet blue */
+    --text-accent: #228b22; /* Forest green */
+    --border-primary: #b2dfdb; /* Light sea green */
+    --border-accent: #66bb6a; /* Light green */
+    --brand-primary: #4caf50; /* Green */
+    --brand-secondary: #81c784; /* Light green */
+    --shadow-color: rgba(0, 100, 0, 0.15);
+    --active-nav-bg: var(--brand-primary);
+    --active-nav-text: white;
+    --button-gradient-start: var(--brand-primary);
+    --button-gradient-end: var(--brand-secondary);
+    --input-focus-ring: var(--brand-primary);
+    --link-color: #388e3c; /* Dark green */
+    --completed-day-bg: #a5d6a7; /* green-300 */
+    --completed-day-text: #1b5e20; /* green-900 */
+    --completed-all-day-bg: #66bb6a; /* green-400 */
+    --completed-all-day-text: white;
+    --completed-focus-day-bg: #c8e6c9; /* green-50 */
+    --missed-day-bg: #ef9a9a; /* red-300 */
+    --missed-day-text: #b71c1c; /* red-900 */
 }
 
-/* Ocean Theme */
+/* --- Ocean Theme --- */
 [data-theme="ocean"] {
-    --bg-primary: #0c2a4d;
-    --bg-secondary: #1a3a5d;
-    --bg-accent: #2a5a8d;
-    --text-primary: #93c5fd;
-    --text-secondary: #60a5fa;
-    --text-accent: #ffffff;
-    --border-primary: #2a5a8d;
-    --border-accent: #3b82f6;
-    --brand-primary: #3b82f6;
-    --brand-secondary: #93c5fd;
-    --shadow-color: rgba(0,0,0,0.25);
+    --bg-primary: #e0f7fa; /* Light cyan */
+    --bg-secondary: #ffffff; /* White */
+    --bg-accent: #b2ebf2; /* Light blue accent */
+    --text-primary: #006064; /* Dark cyan */
+    --text-secondary: #00838f; /* Medium cyan */
+    --text-accent: #01579b; /* Dark blue */
+    --border-primary: #80deea; /* Light blue */
+    --border-accent: #00bcd4; /* Cyan */
+    --brand-primary: #00bcd4; /* Cyan */
+    --brand-secondary: #26c6da; /* Light blue */
+    --shadow-color: rgba(0, 188, 212, 0.15);
+    --active-nav-bg: var(--brand-primary);
+    --active-nav-text: white;
+    --button-gradient-start: var(--brand-primary);
+    --button-gradient-end: var(--brand-secondary);
+    --input-focus-ring: var(--brand-primary);
+    --link-color: #0277bd; /* Deep sky blue */
+    --completed-day-bg: #4dd0e1; /* cyan-300 */
+    --completed-day-text: #006064; /* cyan-900 */
+    --completed-all-day-bg: #26c6da; /* cyan-400 */
+    --completed-all-day-text: white;
+    --completed-focus-day-bg: #e0f7fa; /* cyan-50 */
+    --missed-day-bg: #ffab91; /* deep-orange-200 */
+    --missed-day-text: #bf360c; /* deep-orange-900 */
 }
 
-/* Minimalist Theme */
+/* --- Minimalist Theme --- */
 [data-theme="minimalist"] {
-    --bg-primary: #f8f8f8;
+    --bg-primary: #fdfdfd;
     --bg-secondary: #ffffff;
     --bg-accent: #f0f0f0;
     --text-primary: #333333;
-    --text-secondary: #666666;
-    --text-accent: #999999;
+    --text-secondary: #777777;
+    --text-accent: #555555;
     --border-primary: #e0e0e0;
     --border-accent: #cccccc;
-    --brand-primary: #4a4a4a;
-    --brand-secondary: #888888;
+    --brand-primary: #607d8b; /* Blue Grey */
+    --brand-secondary: #90a4ae; /* Light Blue Grey */
     --shadow-color: rgba(0,0,0,0.05);
+    --active-nav-bg: var(--brand-primary);
+    --active-nav-text: white;
+    --button-gradient-start: var(--brand-primary);
+    --button-gradient-end: var(--brand-secondary);
+    --input-focus-ring: var(--brand-primary);
+    --link-color: #424242;
+    --completed-day-bg: #e8f5e9; /* green-50 */
+    --completed-day-text: #2e7d32; /* green-800 */
+    --completed-all-day-bg: #c8e6c9; /* green-100 */
+    --completed-all-day-text: #1b5e20; /* green-900 */
+    --completed-focus-day-bg: #f9fbe7; /* lime-50 */
+    --missed-day-bg: #fbe9e7; /* deep-orange-50 */
+    --missed-day-text: #d84315; /* deep-orange-900 */
 }
 
-/* Retro Theme */
+/* --- Retro Theme --- */
 [data-theme="retro"] {
-    --bg-primary: #fdf5e6;
+    --bg-primary: #f0e0d0; /* Beige */
     --bg-secondary: #ffffff;
-    --bg-accent: #faebd7;
-    --text-primary: #5c4033;
-    --text-secondary: #8b4513;
-    --text-accent: #a0522d;
-    --border-primary: #d2b48c;
-    --border-accent: #c09a6b;
-    --brand-primary: #b8860b;
-    --brand-secondary: #daa520;
-    --shadow-color: rgba(0,0,0,0.15);
+    --bg-accent: #fdf5e6; /* Old Lace */
+    --text-primary: #4a4a4a; /* Dark gray */
+    --text-secondary: #8b4513; /* SaddleBrown */
+    --text-accent: #a0522d; /* Sienna */
+    --border-primary: #d2b48c; /* Tan */
+    --border-accent: #cd853f; /* Peru */
+    --brand-primary: #cd853f; /* Peru */
+    --brand-secondary: #d2691e; /* Chocolate */
+    --shadow-color: rgba(0,0,0,0.1);
+    --active-nav-bg: var(--brand-primary);
+    --active-nav-text: white;
+    --button-gradient-start: var(--brand-primary);
+    --button-gradient-end: var(--brand-secondary);
+    --input-focus-ring: var(--brand-primary);
+    --link-color: #8b0000; /* Dark red */
+    --completed-day-bg: #f0f4c3; /* lime-100 */
+    --completed-day-text: #558b2f; /* lime-900 */
+    --completed-all-day-bg: #e6ee9c; /* lime-200 */
+    --completed-all-day-text: #33691e; /* lime-900 */
+    --completed-focus-day-bg: #ffffe0; /* light-yellow */
+    --missed-day-bg: #ffccbc; /* deep-orange-100 */
+    --missed-day-text: #bf360c; /* deep-orange-900 */
 }
 
-/* High Contrast Theme */
+/* --- High Contrast Theme --- */
 [data-theme="high-contrast"] {
-    --bg-primary: #000000;
-    --bg-secondary: #1a1a1a;
+    --bg-primary: #000000; /* Black */
+    --bg-secondary: #1a1a1a; /* Dark gray */
     --bg-accent: #333333;
-    --text-primary: #ffffff;
-    --text-secondary: #f0f0f0;
-    --text-accent: #ffff00;
-    --border-primary: #666666;
-    --border-accent: #ffff00;
-    --brand-primary: #00ff00;
-    --brand-secondary: #00ffff;
-    --shadow-color: rgba(255,255,255,0.2);
+    --text-primary: #ffffff; /* White */
+    --text-secondary: #cccccc; /* Light gray */
+    --text-accent: #00ff00; /* Bright green */
+    --border-primary: #666666; /* Gray */
+    --border-accent: #ff00ff; /* Bright magenta */
+    --brand-primary: #00ffff; /* Cyan */
+    --brand-secondary: #00ff00; /* Green */
+    --shadow-color: rgba(255,255,255,0.1);
+    --active-nav-bg: var(--brand-primary);
+    --active-nav-text: black;
+    --button-gradient-start: var(--brand-primary);
+    --button-gradient-end: var(--brand-secondary);
+    --input-focus-ring: var(--brand-primary);
+    --link-color: #ffff00; /* Yellow */
+    --completed-day-bg: #008000; /* green */
+    --completed-day-text: white;
+    --completed-all-day-bg: #00cc00; /* brighter green */
+    --completed-all-day-text: black;
+    --completed-focus-day-bg: #003300; /* darker green */
+    --missed-day-bg: #cc0000; /* red */
+    --missed-day-text: white;
 }
 
-/* Custom Theme */
-/* These variables will be overridden by JavaScript if a custom theme is active */
+/* --- Custom Theme Defaults (these will be overridden by JS when "custom" is selected) --- */
 [data-theme="custom"] {
-    /* These values are placeholders; JS will set them from AppState.customThemeColors */
-    --bg-primary: var(--custom-bg-primary, #f0f4f8);
-    --bg-secondary: var(--custom-bg-secondary, #ffffff);
-    --bg-accent: var(--custom-bg-accent, #fffbeb);
-    --text-primary: var(--custom-text-primary, #1f2937);
-    --text-secondary: var(--custom-text-secondary, #4b5563);
-    --text-accent: var(--custom-text-accent, #78350f);
-    --border-primary: var(--custom-border-primary, #e5e7eb);
-    --border-accent: var(--custom-border-accent, #fcd34d);
-    --brand-primary: var(--custom-brand-primary, #f59e0b);
-    --brand-secondary: var(--custom-brand-secondary, #fbbf24);
-    --shadow-color: var(--custom-shadow-color, rgba(0,0,0,0.1));
+    --bg-primary: #f0f4f8; /* Default light gray */
+    --bg-secondary: #ffffff; /* Default white */
+    --bg-accent: #fffbeb; /* Default light yellow */
+    --text-primary: #1f2937; /* Default dark blue-gray */
+    --text-secondary: #4b5563; /* Default gray */
+    --text-accent: #78350f; /* Default dark orange */
+    --border-primary: #e5e7eb; /* Default light gray */
+    --border-accent: #fcd34d; /* Default yellow */
+    --brand-primary: #f59e0b; /* Default amber */
+    --brand-secondary: #fbbf24; /* Default light amber */
+    --shadow-color: rgba(0,0,0,0.1); /* Default shadow */
+    --active-nav-bg: var(--brand-primary);
+    --active-nav-text: white;
+    --button-gradient-start: var(--brand-primary);
+    --button-gradient-end: var(--brand-secondary);
+    --input-focus-ring: var(--brand-primary);
+    --link-color: #3b82f6;
+    --completed-day-bg: #dcfce7;
+    --completed-day-text: #166534;
+    --completed-all-day-bg: #a7f3d0;
+    --completed-all-day-text: #065f46;
+    --completed-focus-day-bg: #f0fdf4;
+    --missed-day-bg: #fee2e2;
+    --missed-day-text: #b91c1c;
 }
 
-
-/* Base Body Styles */
+/* Ensure global body and root elements use CSS variables */
 body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-primary);
-    color: var(--text-primary);
+    color: var(--text-primary); /* Ensures primary text color changes with theme */
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Navigation Links */
-.nav-link {
-    transition: all 0.3s ease;
-    cursor: pointer;
-    position: relative;
-    padding-bottom: 0.75rem;
-    color: var(--text-secondary);
+/* Base styles for common elements */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary);
 }
 
-.nav-link.active {
-    color: var(--brand-primary);
-    font-weight: 700;
+p, span, label, input, textarea, select {
+    color: var(--text-secondary); /* Default to secondary for most text */
 }
 
-.nav-link.active::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 80%;
-    height: 3px;
-    background-color: var(--brand-primary);
-    border-radius: 2px;
+a {
+    color: var(--link-color);
 }
 
-/* Chart Containers */
-.chart-container {
-    position: relative;
-    width: 100%;
-    max-width: 400px;
-    margin-left: auto;
-    margin-right: auto;
-    height: 300px;
-}
 
-@media (min-width: 768px) {
-    .chart-container {
-        height: 350px;
-    }
-}
+/* --- General Layout and Component Styles --- */
 
-/* View Visibility */
-.view.hidden, .detail-view.hidden {
-    display: none;
-}
-
-/* Card Styles */
 .card {
     background-color: var(--bg-secondary);
+    border-radius: 0.75rem; /* rounded-lg */
+    box-shadow: 0 4px 6px -1px var(--shadow-color), 0 2px 4px -2px var(--shadow-color);
     border: 1px solid var(--border-primary);
-    box-shadow: 0 4px 10px var(--shadow-color);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    border-radius: 1rem;
+    transition: all 0.2s ease-in-out;
 }
 
 .card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px var(--shadow-color);
-}
-
-/* Specific Card Hovers */
-.pillar-card, .skill-card, .shop-item-card {
-    position: relative;
-    overflow: hidden;
-}
-
-.pillar-card:hover, .skill-card:hover, .shop-item-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px var(--shadow-color);
-}
-
-.view-detail-icon {
-    font-size: 1.5rem;
-    color: var(--brand-primary);
-    transition: transform 0.3s ease;
-    position: absolute;
-    top: 1.5rem;
-    right: 1.5rem;
-    line-height: 1;
-}
-
-/* Progress Message */
-.progress-message {
-    margin-top: 1rem;
-    font-size: 1.125rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-}
-
-/* Task/Goal Item Styles */
-.skill-task, .pillar-task, .daily-skill-task-item, .goal-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background-color: var(--bg-accent);
-    padding: 0.75rem 1rem;
-    border-radius: 0.5rem;
-    margin-bottom: 0.5rem;
-    border: 1px solid var(--border-accent);
-}
-
-/* Completed Task/Goal Styles */
-.skill-task.completed, .pillar-task.completed, .daily-skill-task-item.completed, .goal-item.completed {
-    background-color: #d1fae5; /* Light green */
-    color: #065f46; /* Dark green text */
-    text-decoration: line-through;
-    border-color: #34d399; /* Medium green border */
-}
-
-/* Completed Styles for Dark/Themed Modes */
-[data-theme="dark"] .skill-task.completed, [data-theme="dark"] .pillar-task.completed, [data-theme="dark"] .daily-skill-task-item.completed, [data-theme="dark"] .goal-item.completed,
-[data-theme="synthwave"] .skill-task.completed, [data-theme="synthwave"] .pillar-task.completed, [data-theme="synthwave"] .daily-skill-task-item.completed, [data-theme="synthwave"] .goal-item.completed,
-[data-theme="forest"] .skill-task.completed, [data-theme="forest"] .pillar-task.completed, [data-theme="forest"] .daily-skill-task-item.completed, [data-theme="forest"] .goal-item.completed,
-[data-theme="ocean"] .skill-task.completed, [data-theme="ocean"] .pillar-task.completed, [data-theme="ocean"] .daily-skill-task-item.completed, [data-theme="ocean"] .goal-item.completed,
-[data-theme="minimalist"] .skill-task.completed, [data-theme="minimalist"] .pillar-task.completed, [data-theme="minimalist"] .daily-skill-task-item.completed, [data-theme="minimalist"] .goal-item.completed,
-[data-theme="retro"] .skill-task.completed, [data-theme="retro"] .pillar-task.completed, [data-theme="retro"] .daily-skill-task-item.completed, [data-theme="retro"] .goal-item.completed,
-[data-theme="high-contrast"] .skill-task.completed, [data-theme="high-contrast"] .pillar-task.completed, [data-theme="high-contrast"] .daily-skill-task-item.completed, [data-theme="high-contrast"] .goal-item.completed
-{
-    background-color: #065f46; /* Darker green background */
-    color: #d1fae5; /* Lighter green text */
-    border-color: #34d399; /* Medium green border */
-}
-
-/* Buttons for Tasks/Shop/Daily Quests */
-.skill-task-btn, .pillar-task-btn, .shop-buy-btn, .daily-quest-btn, .daily-skill-task-checkbox, .goal-checkbox {
-    padding: 0.25rem 0.75rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-    border-radius: 0.375rem;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-}
-
-.daily-skill-task-checkbox, .goal-checkbox {
-    width: 1.5rem;
-    height: 1.5rem;
-    min-width: 1.5rem;
-    min-height: 1.5rem;
-    accent-color: var(--brand-primary); /* Uses theme primary color for checkbox */
-    cursor: pointer;
-}
-
-.skill-task-btn:not(:disabled), .pillar-task-btn:not(:disabled), .shop-buy-btn:not(:disabled) {
-    background-color: var(--border-accent);
-    color: var(--text-accent);
-    box-shadow: 0 2px 5px var(--shadow-color);
-}
-
-.daily-quest-btn:not(:disabled) {
-    background-image: linear-gradient(to right, var(--brand-primary) 0%, var(--brand-secondary) 100%);
-    color: white;
-    box-shadow: 0 2px 5px var(--shadow-color);
-}
-
-.skill-task-btn:not(:disabled):hover, .pillar-task-btn:not(:disabled):hover, .shop-buy-btn:not(:disabled):hover, .daily-quest-btn:not(:disabled):hover {
-    background-color: var(--brand-secondary);
-    box-shadow: 0 4px 8px var(--shadow-color);
-    transform: translateY(-1px);
-}
-
-.daily-quest-btn:not(:disabled):hover {
-    background-position: right center;
-    box-shadow: 0 5px 15px var(--shadow-color);
-}
-
-.skill-task-btn:disabled, .pillar-task-btn:disabled, .shop-buy-btn:disabled, .daily-quest-btn:disabled {
-    background-color: #a7f3d0; /* Example fixed color for disabled for now */
-    color: #065f46; /* Example fixed color for disabled for now */
-    cursor: not-allowed;
-    box-shadow: none;
-}
-
-/* Card Headers */
-.pillar-card-header, .skill-card-header, .shop-item-header {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    padding-right: 3rem;
-    min-height: 48px;
-}
-
-.pillar-card-header h4, .skill-card-header h4, .shop-item-header h4 {
-    flex-grow: 1;
-}
-
-/* Gradient Button */
-.gradient-button {
-    background-image: linear-gradient(to right, var(--brand-primary) 0%, var(--brand-secondary) 100%);
-    transition: all 0.3s ease;
-    color: white;
-}
-
-.gradient-button:hover {
-    background-position: right center;
-    box-shadow: 0 5px 15px var(--shadow-color);
-}
-
-/* Personalization Form */
-.personalization-form {
-    padding: 2.5rem;
-    border-radius: 1.5rem;
-    max-width: 600px;
-    margin: 4rem auto;
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-primary);
-    box-shadow: 0 10px 20px var(--shadow-color);
-}
-
-.personalization-form input[type="text"],
-.personalization-form select,
-.personalization-form textarea {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid var(--border-primary);
-    border-radius: 0.5rem;
-    margin-top: 0.5rem;
-    margin-bottom: 1.25rem;
-    font-size: 1rem;
-    color: var(--text-primary);
-    background-color: var(--bg-secondary);
-}
-
-.personalization-form label {
-    font-weight: 600;
-    color: var(--text-primary);
-    display: block;
-    margin-bottom: 0.5rem;
-}
-
-.personalization-skills-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 0.75rem;
-    margin-top: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-.personalization-skill-item {
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-primary);
-    border-radius: 0.75rem;
-    padding: 0.75rem 1rem;
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 1px 3px var(--shadow-color);
-}
-
-.personalization-skill-item:hover {
-    border-color: var(--brand-primary);
-    box-shadow: 0 2px 6px var(--shadow-color);
+    box-shadow: 0 10px 15px -3px var(--shadow-color), 0 4px 6px -4px var(--shadow-color);
     transform: translateY(-2px);
 }
 
-.personalization-skill-item input[type="checkbox"] {
-    margin-right: 0.75rem;
-    min-width: 1.25rem;
-    min-height: 1.25rem;
-    accent-color: var(--brand-primary);
-}
-
-.personalization-skill-item.selected {
-    background-color: var(--bg-accent);
-    border-color: var(--brand-secondary);
-    box-shadow: 0 2px 6px var(--shadow-color);
-}
-
-/* Token Display Box */
-.token-display-box {
-    background-color: var(--bg-accent);
-    border: 1px solid var(--border-accent);
+.view {
+    padding: 1.5rem; /* p-6 */
+    background-color: var(--bg-primary); /* Ensures view background matches overall theme */
     border-radius: 0.75rem;
-    padding: 0.75rem 1.25rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: var(--text-accent);
-    box-shadow: 0 2px 5px var(--shadow-color);
+    min-height: calc(100vh - 4rem); /* Ensure views take up space */
 }
 
-.token-display-box .icon {
-    font-size: 1.5rem;
-    line-height: 1;
-}
-
-/* Calendar Day Cells */
-.day-cell.completed-all { background-color: #a7f3d0; color: #065f46; } /* Lightest green */
-.day-cell.completed-main { background-color: #d1fae5; color: #065f46; } /* Medium light green */
-.day-cell.completed-focus { background-color: #ecfdf5; color: #065f46; } /* Darker light green */
-.day-cell.missed { background-color: #fee2e2; color: #b91c1c; } /* Light red */
-
-/* Calendar Day Cells - Dark/Themed Modes */
-[data-theme="dark"] .day-cell.completed-all, [data-theme="synthwave"] .day-cell.completed-all, [data-theme="forest"] .day-cell.completed-all, [data-theme="ocean"] .day-cell.completed-all, [data-theme="minimalist"] .day-cell.completed-all, [data-theme="retro"] .day-cell.completed-all, [data-theme="high-contrast"] .day-cell.completed-all { background-color: #065f46; color: #a7f3d0; }
-[data-theme="dark"] .day-cell.completed-main, [data-theme="synthwave"] .day-cell.completed-main, [data-theme="forest"] .day-cell.completed-main, [data-theme="ocean"] .day-cell.completed-main, [data-theme="minimalist"] .day-cell.completed-main, [data-theme="retro"] .day-cell.completed-main, [data-theme="high-contrast"] .day-cell.completed-main { background-color: #10b981; color: #d1fae5; }
-[data-theme="dark"] .day-cell.completed-focus, [data-theme="synthwave"] .day-cell.completed-focus, [data-theme="forest"] .day-cell.completed-focus, [data-theme="ocean"] .day-cell.completed-focus, [data-theme="minimalist"] .day-cell.completed-focus, [data-theme="retro"] .day-cell.completed-focus, [data-theme="high-contrast"] .day-cell.completed-focus { background-color: #34d399; color: #ecfdf5; }
-[data-theme="dark"] .day-cell.missed, [data-theme="synthwave"] .day-cell.missed, [data-theme="forest"] .day-cell.missed, [data-theme="ocean"] .day-cell.missed, [data-theme="minimalist"] .day-cell.missed, [data-theme="retro"] .day-cell.missed, [data-theme="high-contrast"] .day-cell.missed { background-color: #dc2626; color: #fee2e2; }
-
-/* Goals Section Styles */
-.goals-section {
-    margin-top: 1.5rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--border-primary);
-}
-
-.add-goal-input {
-    width: calc(100% - 70px);
-    padding: 0.6rem;
-    border: 1px solid var(--border-primary);
-    border-radius: 0.5rem;
-    font-size: 0.9rem;
-    margin-right: 0.5rem;
+.detail-view {
     background-color: var(--bg-secondary);
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px -1px var(--shadow-color);
+    border: 1px solid var(--border-primary);
+}
+
+/* --- Navigation --- */
+.nav-link {
+    display: inline-block;
+    padding: 1rem 1rem; /* py-4 px-4 */
+    text-align: center;
+    font-weight: 600; /* font-semibold */
+    color: var(--text-secondary); /* Default nav link color */
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease-in-out;
+}
+
+.nav-link:hover {
+    color: var(--brand-primary);
+    border-bottom-color: var(--brand-secondary);
+}
+
+.nav-link.active {
+    color: var(--active-nav-text);
+    background-color: var(--active-nav-bg);
+    border-color: var(--active-nav-bg);
+    border-radius: 0.5rem 0.5rem 0 0; /* rounded-t-lg */
+    box-shadow: inset 0 -3px 0 0 var(--active-nav-bg); /* Highlight for active tab */
+}
+
+/* --- Buttons --- */
+.gradient-button {
+    background-image: linear-gradient(to right, var(--button-gradient-start), var(--button-gradient-end));
+    color: white; /* Ensure text is white on gradient buttons */
+    border: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.06);
+}
+
+.gradient-button:hover:not(:disabled) {
+    background-image: linear-gradient(to right, var(--button-gradient-end), var(--button-gradient-start));
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.05);
+    transform: translateY(-1px);
+}
+
+.gradient-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-image: linear-gradient(to right, var(--border-primary), var(--border-primary));
+    color: var(--text-secondary);
+    box-shadow: none;
+}
+
+.add-goal-input,
+.add-affirmation-input {
+    flex-grow: 1;
+    padding: 0.75rem 1rem; /* p-3 px-4 */
+    border: 1px solid var(--border-primary);
+    border-radius: 0.5rem; /* rounded-lg */
+    margin-right: 0.5rem; /* mr-2 */
+    background-color: var(--bg-primary);
     color: var(--text-primary);
 }
 
+.add-goal-input:focus,
+.add-affirmation-input:focus {
+    outline: none;
+    border-color: var(--input-focus-ring);
+    box-shadow: 0 0 0 3px rgba(var(--input-focus-ring-rgb), 0.3); /* Custom focus ring */
+}
+
 .add-goal-btn {
-    background-color: #a78bfa; /* Fixed color for goal buttons for consistency */
+    background-color: var(--brand-primary);
     color: white;
-    padding: 0.6rem 1rem;
+    padding: 0.75rem 1rem;
     border-radius: 0.5rem;
     font-weight: 600;
     transition: background-color 0.2s ease;
 }
 
 .add-goal-btn:hover {
-    background-color: #8b5cf6;
+    background-color: var(--brand-secondary);
 }
 
-.goal-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background-color: #ede9fe; /* Fixed light purple */
-    border-color: #c4b5fd; /* Fixed medium purple */
-    padding: 0.75rem 1rem;
-    border-radius: 0.5rem;
-    margin-bottom: 0.5rem;
-    border: 1px solid;
-}
 
-.goal-item.completed {
-    background-color: #d1fae5; /* Light green for completed */
-    border-color: #34d399; /* Medium green for completed */
-}
-
-.goal-text {
-    flex-grow: 1;
-    margin-left: 0.5rem;
-    color: #4c1d95; /* Fixed dark purple for text */
-}
-
-.goal-item.completed .goal-text {
-    color: #065f46; /* Dark green for completed text */
-}
-
-/* Badge Cards (Achievements) */
-.badge-card {
-    position: relative;
-    background-color: var(--bg-secondary);
-    padding: 1.5rem;
-    border-radius: 1rem;
-    box-shadow: 0 4px 10px var(--shadow-color);
-    border: 1px solid var(--border-primary);
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 150px;
-}
-
-.badge-card.locked {
-    filter: grayscale(80%);
-    opacity: 0.6;
-}
-
-.badge-card .badge-icon {
-    font-size: 3rem;
-    margin-bottom: 0.75rem;
-    line-height: 1;
-}
-
-.badge-card .badge-status {
-    font-size: 0.875rem;
-    font-weight: 600;
-    margin-top: 0.5rem;
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-}
-
-.badge-card.earned .badge-status {
-    background-color: #d1fae5;
-    color: #065f46;
-}
-
-.badge-card.locked .badge-status {
-    background-color: #fef3c7;
-    color: #92400e;
-}
-
-/* Modals */
-.missed-reason-modal { /* Reused for custom pillar/skill modal too */
-    background-color: var(--bg-secondary);
-    padding: 2rem;
-    border-radius: 1rem;
-    box-shadow: 0 10px 25px var(--shadow-color);
-    max-width: 400px;
+/* --- Forms & Inputs --- */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+input[type="url"],
+input[type="time"],
+textarea,
+select {
     width: 100%;
-    text-align: center;
-}
-
-/* General Input Styles (for form elements) */
-input, select, textarea {
+    padding: 0.75rem; /* p-3 */
+    border: 1px solid var(--border-primary);
+    border-radius: 0.5rem; /* rounded-md */
     background-color: var(--bg-secondary);
     color: var(--text-primary);
-    border: 1px solid var(--border-primary);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-input:focus, select:focus, textarea:focus {
-    border-color: var(--brand-primary);
-    box-shadow: 0 0 0 2px var(--brand-primary);
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="date"]:focus,
+input[type="url"]:focus,
+input[type="time"]:focus,
+textarea:focus,
+select:focus {
     outline: none;
+    border-color: var(--input-focus-ring);
+    box-shadow: 0 0 0 3px rgba(var(--input-focus-ring-rgb), 0.3); /* Custom focus ring */
 }
 
-/* Modal Overlay */
+/* Helper for input focus ring RGB conversion for rgba() */
+:root { --input-focus-ring-rgb: 245, 158, 11; } /* Default amber-500 */
+[data-theme="dark"] { --input-focus-ring-rgb: 167, 139, 250; } /* Violet */
+[data-theme="synthwave"] { --input-focus-ring-rgb: 255, 0, 255; } /* Neon Pink */
+[data-theme="forest"] { --input-focus-ring-rgb: 76, 175, 80; } /* Green */
+[data-theme="ocean"] { --input-focus-ring-rgb: 0, 188, 212; } /* Cyan */
+[data-theme="minimalist"] { --input-focus-ring-rgb: 96, 125, 139; } /* Blue Grey */
+[data-theme="retro"] { --input-focus-ring-rgb: 205, 133, 63; } /* Peru */
+[data-theme="high-contrast"] { --input-focus-ring-rgb: 0, 255, 255; } /* Cyan */
+
+/* --- Modals --- */
 .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(0, 0, 0, 0.6);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 1000;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    transition: opacity 0.3s ease;
 }
 
-/* Styles for new sections: Settings and Analytics */
-.settings-grid, .analytics-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-}
-
-@media (min-width: 768px) {
-    .settings-grid, .analytics-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-@media (min-width: 1024px) {
-    /* Specific for analytics overview on larger screens */
-    .analytics-grid-lg-3 {
-        grid-template-columns: repeat(3, 1fr);
-    }
-}
-
-/* Journal Section */
-.journal-entry {
+.modal-overlay > .card,
+.missed-reason-modal {
     background-color: var(--bg-secondary);
+    padding: 2rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 500px;
+    transform: translateY(-20px);
+    opacity: 0;
+    animation: modalFadeIn 0.3s forwards;
     border: 1px solid var(--border-primary);
+}
+
+.modal-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Animation for modal entry */
+@keyframes modalFadeIn {
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+
+/* Message Box */
+#message-box {
+    min-width: 250px;
+    text-align: center;
+    background-color: var(--brand-primary); /* Default for success */
+    color: white;
+    /* Styles are mostly in JS, but ensure base */
+}
+
+/* --- Personalization Menu --- */
+.personalization-form {
+    max-width: 600px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background-color: var(--bg-secondary);
     border-radius: 1rem;
-    padding: 1.5rem;
-    margin-bottom: 1rem;
-    box-shadow: 0 2px 5px var(--shadow-color);
-}
-
-.journal-entry-meta {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    margin-bottom: 0.5rem;
-}
-
-/* Custom Theme Builder Color Pickers */
-.custom-theme-color-picker {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-top: 0.5rem;
-}
-
-.color-picker-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.75rem; /* Smaller label for color pickers */
-    color: var(--text-secondary);
-}
-
-.color-input {
-    width: 50px;
-    height: 30px;
-    padding: 0;
+    box-shadow: 0 10px 20px var(--shadow-color);
     border: 1px solid var(--border-primary);
-    border-radius: 0.25rem;
-    cursor: pointer;
-    -webkit-appearance: none; /* Remove default browser styling */
-    -moz-appearance: none;
-    appearance: none;
-}
-.color-input::-webkit-color-swatch-wrapper {
-    padding: 0;
-}
-.color-input::-webkit-color-swatch {
-    border: none;
-    border-radius: 0.25rem;
-}
-.color-input::-moz-color-swatch {
-    border: none;
-    border-radius: 0.25rem;
 }
 
-/* Custom Checkbox and Radio Button Styling */
-input[type="checkbox"],
-input[type="radio"] {
-    -webkit-appearance: none; /* Hide default browser checkbox/radio */
-    -moz-appearance: none;
-    appearance: none;
-    width: 1.25rem;
-    height: 1.25rem;
+.personalization-skills-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+}
+
+.personalization-skill-item {
+    display: flex;
+    align-items: center;
+    background-color: var(--bg-primary);
     border: 2px solid var(--border-primary);
-    border-radius: 0.25rem; /* Square for checkbox */
-    display: inline-block;
-    position: relative;
+    border-radius: 0.75rem;
+    padding: 0.75rem;
     cursor: pointer;
-    vertical-align: middle;
-    background-color: var(--bg-secondary);
     transition: all 0.2s ease;
+    color: var(--text-secondary); /* Default text color */
 }
 
-input[type="radio"] {
-    border-radius: 50%; /* Round for radio button */
+.personalization-skill-item:hover {
+    border-color: var(--brand-secondary);
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.08);
 }
 
-input[type="checkbox"]:checked,
-input[type="radio"]:checked {
+.personalization-skill-item.selected {
     background-color: var(--brand-primary);
+    color: white;
+    border-color: var(--brand-secondary);
+    box-shadow: 0 4px 10px rgba(var(--brand-primary-rgb), 0.2);
+}
+
+.personalization-skill-item input[type="checkbox"] {
+    display: none; /* Hide default checkbox */
+}
+
+/* --- Dashboard Specific Styles --- */
+.token-display-box {
+    display: flex;
+    align-items: center;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    color: var(--text-primary); /* Use primary text color for these boxes */
+}
+
+.token-display-box .icon {
+    font-size: 1.25rem;
+    margin-right: 0.5rem;
+}
+
+.progress-message {
+    color: var(--text-secondary); /* Ensure text color respects theme */
+    margin-top: 1rem;
+    font-weight: 500;
+}
+
+/* Chart Container */
+.chart-container {
+    position: relative;
+    height: 250px; /* Default height for charts */
+    width: 100%;
+}
+
+/* --- Calendar Grid --- */
+#calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 0.75rem;
+}
+
+.day-cell {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    padding: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-primary); /* Ensure day numbers change with theme */
+    position: relative;
+    overflow: hidden;
+}
+
+.day-cell:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.day-cell.ring-2 {
     border-color: var(--brand-primary);
 }
 
-input[type="checkbox"]:checked::after {
-    content: '\2713'; /* Checkmark Unicode character */
-    font-size: 0.8rem;
+.day-cell.completed-main {
+    background-color: var(--completed-day-bg);
+    color: var(--completed-day-text);
+    border-color: var(--completed-day-bg);
+}
+.day-cell.completed-focus {
+    background-color: var(--completed-focus-day-bg);
+    color: var(--completed-day-text); /* Use same text color as main completion */
+    border-color: var(--completed-focus-day-bg);
+}
+.day-cell.completed-all {
+    background-color: var(--completed-all-day-bg);
+    color: var(--completed-all-day-text);
+    border-color: var(--completed-all-day-bg);
+}
+.day-cell.missed {
+    background-color: var(--missed-day-bg);
+    color: var(--missed-day-text);
+    border-color: var(--missed-day-bg);
+}
+
+/* --- Pillar/Skill Cards --- */
+.pillar-card, .skill-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-start; /* Align header to start */
+    height: 120px; /* Fixed height for consistency */
+    cursor: pointer;
+}
+
+.pillar-card-header, .skill-card-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.view-detail-icon {
+    align-self: flex-end; /* Push arrow to bottom right */
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+    transition: color 0.2s ease;
+}
+
+.pillar-card:hover .view-detail-icon,
+.skill-card:hover .view-detail-icon {
+    color: var(--brand-primary);
+}
+
+/* Pillar/Skill Task Items */
+.pillar-task, .skill-task, .daily-skill-task-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    color: var(--text-primary); /* Task text color */
+}
+
+.pillar-task.completed, .skill-task.completed, .daily-skill-task-item.completed {
+    background-color: var(--completed-day-bg); /* Use a light green for completion */
+    border-color: var(--completed-day-text);
+    color: var(--completed-day-text);
+    text-decoration: line-through;
+    opacity: 0.8;
+}
+
+.pillar-task-btn, .skill-task-btn {
+    background-color: var(--brand-primary);
     color: white;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    line-height: 1; /* Ensure checkmark is centered */
+    padding: 0.4rem 0.8rem;
+    border-radius: 0.375rem; /* rounded-md */
+    font-weight: 500;
+    font-size: 0.8rem;
+    transition: background-color 0.2s ease;
 }
 
-input[type="radio"]:checked::after {
-    content: '';
-    width: 0.6rem;
-    height: 0.6rem;
-    background-color: white;
-    border-radius: 50%;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+.pillar-task-btn:hover:not(:disabled), .skill-task-btn:hover:not(:disabled) {
+    background-color: var(--brand-secondary);
 }
 
-/* Toggle Switch for notifications */
+.pillar-task-btn:disabled, .skill-task-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: var(--border-primary);
+    color: var(--text-secondary);
+}
+
+/* Goal Items */
+.goal-item {
+    display: flex;
+    align-items: center;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+
+.goal-item.completed {
+    background-color: var(--completed-day-bg);
+    border-color: var(--completed-day-text);
+    color: var(--completed-day-text);
+    text-decoration: line-through;
+    opacity: 0.8;
+}
+
+.goal-checkbox {
+    /* Style custom checkbox if needed */
+    width: 1.25rem;
+    height: 1.25rem;
+    min-width: 1.25rem; /* Ensure it doesn't shrink */
+    min-height: 1.25rem;
+    accent-color: var(--brand-primary); /* Colors the checkbox itself */
+}
+
+/* Shop Items */
+.shop-item-card {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Pushes button to bottom */
+}
+
+.shop-buy-btn {
+    background-color: var(--brand-primary);
+    color: white;
+    transition: background-color 0.2s ease;
+}
+
+.shop-buy-btn:hover:not(:disabled) {
+    background-color: var(--brand-secondary);
+}
+
+.shop-buy-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: var(--border-primary);
+    color: var(--text-secondary);
+}
+
+/* Badge Cards */
+.badge-card {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    min-height: 180px; /* Ensure consistent height */
+}
+
+.badge-card .badge-icon {
+    font-size: 3rem;
+    margin-bottom: 0.75rem;
+}
+
+.badge-card .badge-status {
+    font-weight: 600;
+    margin-top: 0.75rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 0.8rem;
+}
+
+.badge-card.earned {
+    background-color: var(--completed-day-bg);
+    border-color: var(--completed-day-text);
+    box-shadow: 0 4px 8px rgba(var(--completed-day-text-rgb), 0.15);
+}
+
+.badge-card.earned .badge-status {
+    background-color: var(--completed-day-text);
+    color: white;
+}
+
+.badge-card.locked {
+    opacity: 0.7;
+    filter: grayscale(80%);
+    background-color: var(--bg-primary);
+    border-color: var(--border-primary);
+}
+
+.badge-card.locked .badge-status {
+    background-color: var(--border-primary);
+    color: var(--text-secondary);
+}
+
+/* Schedule Buttons */
+.schedule-btn {
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.schedule-btn.active {
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* Journal Styles */
+.journal-entry {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    position: relative;
+    color: var(--text-primary);
+}
+
+.journal-entry p {
+    color: var(--text-primary); /* Ensure journal content is primary text */
+}
+
+.journal-entry-meta span {
+    color: var(--text-secondary); /* Meta info secondary */
+}
+
+.journal-entry.hidden { /* For filtering */
+    display: none;
+}
+
+/* Journal Tag Input (New) */
+#journal-tags-input {
+    /* Existing input styles should apply */
+    margin-bottom: 0.5rem;
+}
+
+/* --- Settings Tab Navigation --- */
+.tab-button {
+    flex: 1;
+    padding: 1rem;
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-bottom: none;
+    border-radius: 0.5rem 0.5rem 0 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tab-button:first-child {
+    border-left: none; /* Align with card edge */
+}
+.tab-button:last-child {
+    border-right: none; /* Align with card edge */
+}
+
+.tab-button.active-tab {
+    color: var(--active-nav-text);
+    background-color: var(--active-nav-bg);
+    border-color: var(--active-nav-bg);
+    transform: translateY(1px); /* Slight lift */
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+}
+
+.tab-content {
+    padding-top: 1.5rem; /* space between tabs and content */
+}
+
+/* Toggle Switch */
 .toggle-switch {
     position: relative;
     display: inline-block;
@@ -736,7 +877,7 @@ input[type="radio"]:checked::after {
     right: 0;
     bottom: 0;
     background-color: var(--border-primary);
-    transition: .4s;
+    transition: 0.4s;
     border-radius: 34px;
 }
 
@@ -747,8 +888,8 @@ input[type="radio"]:checked::after {
     width: 26px;
     left: 4px;
     bottom: 4px;
-    background-color: white;
-    transition: .4s;
+    background-color: var(--bg-secondary);
+    transition: 0.4s;
     border-radius: 50%;
 }
 
@@ -756,31 +897,164 @@ input:checked + .slider {
     background-color: var(--brand-primary);
 }
 
+input:focus + .slider {
+    box-shadow: 0 0 1px var(--brand-primary);
+}
+
 input:checked + .slider:before {
     transform: translateX(26px);
 }
 
-/* Settings Tab Buttons */
-.tab-button {
-    padding: 0.75rem 1.5rem;
-    border-radius: 0.5rem;
-    font-weight: 600;
-    transition: all 0.2s ease;
-    cursor: pointer;
-    background-color: var(--bg-secondary);
+/* Custom Theme Color Picker */
+.custom-theme-color-picker {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.color-picker-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
     color: var(--text-secondary);
+}
+
+.color-picker-item label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-align: center;
+    width: 100%;
+}
+
+.color-input {
+    width: 100%;
+    height: 40px;
     border: 1px solid var(--border-primary);
+    border-radius: 0.5rem;
+    padding: 0;
+    cursor: pointer;
+    background-color: var(--bg-secondary); /* Ensures background for border */
 }
 
-.tab-button.active-tab {
-    background-color: var(--brand-primary);
-    color: white;
-    border-color: var(--brand-primary);
-    box-shadow: 0 2px 5px var(--shadow-color);
+/* Hide default color input square (browser specific, might not work everywhere) */
+input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 0.5rem; /* Match parent */
 }
 
-.tab-content {
-    border-top: 1px solid var(--border-primary);
-    padding-top: 1.5rem;
-    margin-top: 1rem;
+/* Tiered Badges (future JS elements) */
+.badge-card.bronze { background-color: #cd7f321a; border-color: #cd7f32; } /* Bronze tint */
+.badge-card.silver { background-color: #c0c0c01a; border-color: #c0c0c0; } /* Silver tint */
+.badge-card.gold { background-color: #ffd7001a; border-color: #ffd700; } /* Gold tint */
+.badge-card.bronze .badge-status { background-color: #cd7f32; }
+.badge-card.silver .badge-status { background-color: #c0c0c0; }
+.badge-card.gold .badge-status { background-color: #ffd700; }
+
+/* Micro-Challenge Modal */
+#micro-challenge-modal .missed-reason-modal {
+    max-width: 400px;
 }
+
+/* Learning Resources & Quizzes (in settings) */
+#settings-learning-resources-list > div,
+#settings-quizzes-list > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+
+#settings-learning-resources-list a {
+    color: var(--link-color);
+    text-decoration: underline;
+}
+
+/* Inspirational Carousel */
+#inspiration-carousel {
+    font-style: italic;
+    font-size: 1.25rem; /* text-lg */
+    color: var(--text-secondary);
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    text-align: center;
+    overflow: hidden; /* For future animations */
+}
+
+#quote-author {
+    color: var(--text-secondary);
+}
+
+/* General Link Styling (ensure color changes with theme) */
+a {
+    color: var(--link-color);
+    transition: color 0.2s ease;
+}
+a:hover {
+    filter: brightness(1.2);
+}
+
+/* Fix for primary text not changing with theme (re-asserting colors) */
+.text-primary {
+    color: var(--text-primary) !important;
+}
+.text-secondary {
+    color: var(--text-secondary) !important;
+}
+.text-accent {
+    color: var(--text-accent) !important;
+}
+.font-semibold {
+    color: var(--text-primary); /* Default for font-semibold if not explicitly primary/secondary */
+}
+
+/* Responsiveness adjustments */
+@media (max-width: 768px) {
+    .personalization-form, .card, .detail-view, .modal-overlay > .card, .missed-reason-modal {
+        padding: 1.5rem;
+    }
+
+    .nav-link {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .token-display-box {
+        width: 100%;
+        justify-content: center;
+    }
+
+    #dashboard .grid {
+        grid-template-columns: 1fr;
+    }
+
+    #dashboard .lg\:col-span-2,
+    #dashboard .lg\:col-span-3 {
+        grid-column: auto;
+    }
+
+    .custom-theme-color-picker {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    }
+}
+
+/* General element adjustments to use variables */
+.bg-primary { background-color: var(--bg-primary); }
+.bg-secondary { background-color: var(--bg-secondary); }
+.bg-accent { background-color: var(--bg-accent); }
+.border-primary { border-color: var(--border-primary); }
+.border-accent { border-color: var(--border-accent); }
+.brand-primary { color: var(--brand-primary); } /* For direct text usage */
+.brand-secondary { color: var(--brand-secondary); } /* For direct text usage */
