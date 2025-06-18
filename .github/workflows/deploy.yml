@@ -1,0 +1,36 @@
+# .github/workflows/deploy.yml
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main # This workflow will run when you push to the 'main' branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js (if you had a build step, though not strictly needed for pure HTML/CSS/JS)
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16' # Or any version compatible with your potential build tools
+
+    # If you had any build steps (e.g., for Tailwind JIT, SASS, or React/Vue builds),
+    # you would add them here. For pure HTML/CSS/JS, this might not be necessary.
+    # - name: Install dependencies
+    #   run: npm install
+    # - name: Build project
+    #   run: npm run build # Replace with your build command
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./ # This tells it to publish the root directory of your repository
+        # If your HTML/CSS/JS files are in a subdirectory (e.g., 'src' or 'dist'),
+        # change publish_dir to that directory:
+        # publish_dir: ./dist
