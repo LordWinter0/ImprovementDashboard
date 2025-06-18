@@ -3,8 +3,15 @@
 const TOTAL_CHALLENGE_DAYS = 90;
 const TOKEN_FOR_DAILY_FOCUS_COMPLETION = 3; // Tokens gained per daily focus completion
 const MAX_DAILY_SKILL_TASKS = 3; // Max number of daily skill tasks to present
+const MICRO_CHALLENGE_TOKEN_REWARD = 5; // Tokens for completing a micro-challenge
+const QUIZ_TOKEN_REWARD_CORRECT_ANSWER = 2; // Tokens per correct quiz answer
 
 // --- Utility Functions ---
+
+/**
+ * Generates a UUID for unique IDs.
+ * @returns {string} A unique ID string.
+ */
 function generateUUID() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
         var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
@@ -12,6 +19,11 @@ function generateUUID() {
     });
 }
 
+/**
+ * Formats a Date object to YYYY-MM-DD string (local timezone).
+ * @param {Date} date - The date object.
+ * @returns {string} Formatted date string.
+ */
 function formatDate(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -19,14 +31,35 @@ function formatDate(date) {
     return `${year}-${month}-${day}`;
 }
 
+/**
+ * Calculates the number of full days between two dates.
+ * Dates are floored to the start of their day in local timezone.
+ * @param {Date} date1
+ * @param {Date} date2
+ * @returns {number} The number of days.
+ */
+function getDayDifference(date1, date2) {
+    const d1 = new Date(date1);
+    d1.setHours(0, 0, 0, 0); // Normalize to start of day
+    const d2 = new Date(date2);
+    d2.setHours(0, 0, 0, 0); // Normalize to start of day
+    const diffTime = Math.abs(d2.getTime() - d1.getTime());
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * Calculates time until next midnight in local timezone.
+ * @returns {number} Milliseconds until midnight.
+ */
 function getTimeUntilMidnight() {
     const now = new Date();
     const midnight = new Date(now);
-    midnight.setHours(24, 0, 0, 0); // Set to next midnight
+    midnight.setHours(24, 0, 0, 0); // Set to next midnight (local time)
     return midnight.getTime() - now.getTime();
 }
 
 let countdownInterval;
+/** Starts or updates the countdown timer for daily refresh. */
 function startCountdownTimer() {
     const timerElement = document.getElementById('countdown-timer');
     if (timerElement && countdownInterval) clearInterval(countdownInterval);
@@ -41,7 +74,7 @@ function startCountdownTimer() {
         if (timeLeft <= 0) {
             timerElement.textContent = 'Refreshing now...';
             clearInterval(countdownInterval);
-            location.reload();
+            location.reload(); // Reload the page to reset daily tasks
         } else {
             const hours = Math.floor(timeLeft / (1000 * 60 * 60));
             const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
@@ -51,33 +84,52 @@ function startCountdownTimer() {
     }, 1000);
 }
 
+/** Shuffles an array in place. */
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
+// --- App State Definition ---
 const AppState = {
     currentView: 'dashboard',
     userName: null,
     difficulty: 'normal',
     selectedSkills: new Set(),
     isPersonalized: false,
-    today: 1,
-    completedDays: new Set(),
+    // startDate is set to the start of the day user completes personalization
+    startDate: null,
+    // today is calculated dynamically based on startDate and current date
+    today: 1, // Represents the current challenge day (1 to 90)
+    lastVisitDate: null, // Stores the formatted date of the last visit
+
+    completedDays: new Set(), // Days where main mission was completed
     currentStreak: 0,
     bestStreak: 0,
-    dailyActivityMap: {}, // Stores main, focus, mood, highlight, missedReason for each day
+    dailyActivityMap: {}, // { 'YYYY-MM-DD': { main:bool, focus:bool, mood:str, highlight:str, missedReason:str, skippedWithRestDay:bool }, ... }
+
     completedSkillTasks: {}, // { skillId: [taskIndex, ...], ... }
     completedPillarTasks: {}, // { pillarId: [taskIndex, ...], ... }
+    
     tokens: 0,
-    dailyFocusTasks: [], // [{ skillId, taskIndex, taskText, completed }, ...]
+    dailyFocusTasks: [], // [{ skillId, taskIndex, taskText, skillIcon, completed }, ...]
     dailyFocusCompletedToday: false,
     lastDailyFocusDate: null,
-    nextDailyFocusBonus: 0,
+    nextDailyFocusBonus: 0, // Multiplier for next daily focus tokens
+    
     restDaysAvailable: 0,
+    microChallenges: [], // [{ id, text, completed, dateCompleted }, ...]
+    lastMicroChallengeDate: null, // To ensure one per day
+    
     userGoals: {}, // { entityId: [{ id, text, completed }, ...], global: [...] }
-    globalGoals: [],
+    globalGoals: [], // Global goals as a flat array
+    
     earnedBadges: new Set(),
     purchasedShopItems: new Set(),
-    lastSummaryDate: null, // For future potential weekly/monthly summaries
-    startDate: null, // Date challenge officially started
-    lastVisitDate: null, // Last date user opened the app
-    affirmations: [
+    
+    affirmations: [ // Default affirmations
         "Believe you can and you're halfway there. ✨",
         "Every step forward, no matter how small, counts. Keep going! 💪",
         "Your glow-up is a journey, not a destination. Enjoy the ride! 🌈",
@@ -90,19 +142,28 @@ const AppState = {
         "Your mindset is everything. Think positive, be positive! 😊"
     ],
     userAffirmations: [], // Custom affirmations added by user
-    journalEntries: [], // [{ id, date, mood, highlight, content, tags }]
+    journalEntries: [], // [{ id, date, mood, highlight, content, tags:[] }]
+    
     theme: 'light',
     customThemeColors: null, // { --bg-primary: '#...', ... }
     notificationsEnabled: true,
+    notificationTime: '08:00', // Default notification time
     reduceMotion: false,
+    fontSize: 'medium', // 'small', 'medium', 'large'
+    fontFamily: 'Inter', // 'Inter', 'Open Sans Dyslexic', 'Lexend Deca'
+
     customPillars: [], // [{ id, icon, title, content, tasks }]
     customSkills: [], // [{ id, icon, title, content, tasks }]
+    learningResources: [], // [{ id, name, url, associatedEntityId }]
+    quizzes: [], // [{ id, name, questions: [{ q, options:[], a, completed:bool }], completed:bool, score:int, dateCompleted }]
 };
 
+// --- Static Data (Default Pillars, Skills, Shop, Badges, etc.) ---
+// (Moved here for conciseness, same as provided previously, but shortened for example)
 const dailyTasks = Array.from({ length: TOTAL_CHALLENGE_DAYS }, (_, i) => {
     const day = i + 1;
     let pillar, task;
-
+    // ... (logic for assigning daily tasks based on day remains the same)
     if (day <= 30) {
         switch (day % 10) {
             case 1: pillar = 'Mind'; task = "Goal Setting & Hydration: Write down your goals. Track water intake."; break;
@@ -117,7 +178,6 @@ const dailyTasks = Array.from({ length: TOTAL_CHALLENGE_DAYS }, (_, i) => {
             case 0: pillar = 'Body'; task = "Strength Starter: 2 sets of 10 squats, 20-second plank."; break;
             default: pillar = 'Mind'; task = "Daily check-in: How are you feeling today?"; break;
         }
-        // Specific tasks for certain days in phase 1
         if (day === 11) { pillar = 'Hygiene'; task = "Hygiene Refresh: Clean toothbrush. Wear fresh clothes."; }
         if (day === 12) { pillar = 'Style'; task = "Style Fun: Try a new, simple hairstyle."; }
         if (day === 13) { pillar = 'Nourish'; task = "Snack Smart: Choose fruit over chips/candy."; }
@@ -487,12 +547,11 @@ const defaultSkillsData = [
 let pillarsData = [...defaultPillarsData];
 let skillsData = [...defaultSkillsData];
 
-
 const shopItems = [
     {
         id: 'rest-day',
         name: 'Rest Day',
-        icon: '🛌',
+        icon: '�',
         description: 'Skip one daily mission! The day will be marked as complete without doing the task.',
         cost: 20
     },
@@ -523,21 +582,42 @@ const shopItems = [
         icon: '🎁',
         description: 'A surprise reward! What will you get?',
         cost: 50
+    },
+    {
+        id: 'badge-unlock',
+        name: 'Unlock Random Badge',
+        icon: '🎖️',
+        description: 'Instantly unlock a random badge you haven\'t earned yet.',
+        cost: 75
+    },
+    {
+        id: 'affirmation-pack',
+        name: 'Affirmation Pack',
+        icon: '💖',
+        description: 'Adds 5 new inspiring affirmations to your collection.',
+        cost: 10
     }
 ];
 
 const badgesData = [
-    { id: 'consistency-streak-7', name: '7-Day Streak', icon: '🔥', description: 'Completed daily missions for 7 days in a row!' },
-    { id: 'consistency-streak-30', name: '30-Day Streak', icon: '🌟', description: 'Maintained consistency for a whole month!' },
+    { id: 'consistency-streak-7', name: '7-Day Streak', icon: '🔥', description: 'Completed daily missions for 7 days in a row!', tier: 'bronze' },
+    { id: 'consistency-streak-30', name: '30-Day Streak', icon: '🌟', description: 'Maintained consistency for a whole month!', tier: 'silver' },
+    { id: 'consistency-streak-90', name: '90-Day Streak', icon: '🏆', description: 'Mastered consistency for the entire challenge!', tier: 'gold' },
     { id: 'halfway-hero', name: 'Halfway Hero', icon: '🏅', description: 'Reached Day 45 of your 90-day challenge!' },
     { id: 'challenge-master', name: 'Challenge Master', icon: '👑', description: 'Completed all 90 days of the challenge!' },
-    { id: 'token-tycoon', name: 'Token Tycoon', icon: '💰', description: 'Collected 50 Glow Tokens!' },
-    { id: 'skill-explorer', name: 'Skill Explorer', icon: '🗺️', description: 'Completed 5 tasks across different skills!' },
-    { id: 'pillar-powerhouse', name: 'Pillar Powerhouse', icon: '🏛️', description: 'Completed 5 tasks across different pillars!' },
-    { id: 'goal-getter', name: 'Goal Getter', icon: '🎯', description: 'Completed your first personal goal!' },
-    { id: 'shopaholic', name: 'Shopaholic', icon: '🛍️', description: 'Purchased 3 distinct items from the shop!' }
+    { id: 'token-tycoon-50', name: 'Token Tycoon (50)', icon: '💰', description: 'Collected 50 Glow Tokens!', tier: 'bronze' },
+    { id: 'token-tycoon-100', name: 'Token Tycoon (100)', icon: '💎', description: 'Collected 100 Glow Tokens!', tier: 'silver' },
+    { id: 'skill-explorer-5', name: 'Skill Explorer (5)', icon: '🗺️', description: 'Completed 5 tasks across different skills!', tier: 'bronze' },
+    { id: 'skill-explorer-10', name: 'Skill Explorer (10)', icon: '🧭', description: 'Completed 10 tasks across different skills!', tier: 'silver' },
+    { id: 'pillar-powerhouse-5', name: 'Pillar Powerhouse (5)', icon: '🏛️', description: 'Completed 5 tasks across different pillars!', tier: 'bronze' },
+    { id: 'pillar-powerhouse-10', name: 'Pillar Powerhouse (10)', icon: '🏰', description: 'Completed 10 tasks across different pillars!', tier: 'silver' },
+    { id: 'goal-getter-first', name: 'First Goal Getter', icon: '🎯', description: 'Completed your first personal goal!', tier: 'bronze' },
+    { id: 'goal-getter-5', name: 'Goal Master (5)', icon: '🏆', description: 'Completed 5 personal goals!', tier: 'silver' },
+    { id: 'shopaholic', name: 'Shopaholic', icon: '🛍️', description: 'Purchased 3 distinct items from the shop!' },
+    { id: 'quiz-master', name: 'Quiz Master', icon: '🧠', description: 'Completed 3 quizzes with a perfect score!' },
+    { id: 'journal-keeper', name: 'Journal Keeper', icon: '📓', description: 'Made 10 journal entries.' },
+    { id: 'micro-challenge-pro', name: 'Micro-Challenge Pro', icon: '⚡', description: 'Completed 5 micro-challenges.' }
 ];
-
 
 const schedulesData = {
     weekday: `
@@ -579,147 +659,151 @@ const journalPrompts = [
     "Write about a positive interaction you had with someone today."
 ];
 
+const microChallengePool = [
+    { id: 'kind-word', text: 'Give a genuine compliment to someone today. 😊' },
+    { id: 'tidy-spot', text: 'Clean up one small messy spot in your room. ✨' },
+    { id: '5min-stretch', text: 'Do 5 minutes of mindful stretching. 🧘‍♀️' },
+    { id: 'hydration-check', text: 'Drink an extra glass of water. 💧' },
+    { id: 'quick-read', text: 'Read something for pure enjoyment for 10 minutes. 📚' },
+    { id: 'new-song', text: 'Listen to a song from a genre you usually don\'t. 🎶' },
+    { id: 'gratitude-thought', text: 'Think of one small thing you are grateful for right now. 🙏' },
+    { id: 'posture-check', text: 'Consciously correct your posture three times today. 🚶‍♀️' },
+    { id: 'brain-break', text: 'Take a 5-minute break from screens, just look out a window. 🌳' },
+    { id: 'help-someone', text: 'Offer a small, unsolicited act of help to a family member. 🤝' }
+];
+
+const defaultQuizzes = [
+    {
+        id: 'healthy-habits-1',
+        name: 'Healthy Habits Quiz 1',
+        associatedEntityId: 'nourish',
+        questions: [
+            { q: 'How many glasses of water should you aim for daily?', options: ['2-3', '4-5', '6-8', '10+'], a: '6-8' },
+            { q: 'Which is a lean protein source?', options: ['Fried Chicken', 'Tofu', 'Processed Cheese', 'Instant Noodles'], a: 'Tofu' },
+            { q: 'What is the best way to start your day for energy?', options: ['Skipping breakfast', 'Sugary cereal', 'Balanced breakfast', 'Coffee only'], a: 'Balanced breakfast' }
+        ]
+    },
+    {
+        id: 'mindfulness-basics',
+        name: 'Mindfulness Basics Quiz',
+        associatedEntityId: 'mind',
+        questions: [
+            { q: 'What is mindfulness primarily about?', options: ['Thinking about the past', 'Being present', 'Planning the future', 'Ignoring feelings'], a: 'Being present' },
+            { q: 'A short breathing exercise can help with:', options: ['Increasing stress', 'Calming down', 'Making you sleepy', 'Making you hungry'], a: 'Calming down' },
+            { q: 'What is a "thought" in mindfulness?', options: ['A fact', 'An opinion', 'A passing mental event', 'A command'], a: 'A passing mental event' }
+        ]
+    }
+];
+
 let progressChartInstance = null;
 let dailyCompletionChartInstance = null;
 let streakHistoryChartInstance = null;
 let moodTrendChartInstance = null;
 
 // --- State Management ---
+/** Loads the app state from local storage. */
 function loadState() {
     const savedState = localStorage.getItem('glowUpAppState');
-    
+
     if (savedState) {
         const parsedState = JSON.parse(savedState);
-        
-        // Core App State
-        AppState.completedDays = new Set(parsedState.completedDays || []);
-        AppState.currentStreak = parsedState.currentStreak || 0;
-        AppState.bestStreak = parsedState.bestStreak || 0;
-        AppState.dailyActivityMap = parsedState.dailyActivityMap || {};
-        for (const date in AppState.dailyActivityMap) {
-            if (typeof AppState.dailyActivityMap[date].mood === 'undefined') AppState.dailyActivityMap[date].mood = '';
-            if (typeof AppState.dailyActivityMap[date].highlight === 'undefined') AppState.dailyActivityMap[date].highlight = '';
-            if (typeof AppState.dailyActivityMap[date].missedReason === 'undefined') AppState.dailyActivityMap[date].missedReason = '';
+
+        // Iterate and assign properties, ensuring new properties are initialized if missing
+        for (const key in AppState) {
+            if (parsedState.hasOwnProperty(key)) {
+                if (AppState[key] instanceof Set) {
+                    AppState[key] = new Set(parsedState[key]);
+                } else if (typeof AppState[key] === 'object' && AppState[key] !== null && !Array.isArray(AppState[key])) {
+                    // Deep merge for objects like dailyActivityMap, userGoals, completedSkillTasks, completedPillarTasks
+                    AppState[key] = { ...AppState[key], ...parsedState[key] };
+                } else {
+                    AppState[key] = parsedState[key];
+                }
+            }
         }
-
-        AppState.completedSkillTasks = parsedState.completedSkillTasks || {};
-        AppState.completedPillarTasks = parsedState.completedPillarTasks || {};
-        AppState.tokens = parsedState.tokens || 0;
-        AppState.dailyFocusTasks = parsedState.dailyFocusTasks || [];
-        AppState.dailyFocusCompletedToday = parsedState.dailyFocusCompletedToday || false;
-        AppState.lastDailyFocusDate = parsedState.lastDailyFocusDate || null;
-        AppState.nextDailyFocusBonus = parsedState.nextDailyFocusBonus || 0;
-        AppState.restDaysAvailable = parsedState.restDaysAvailable || 0;
-        AppState.userGoals = parsedState.userGoals || {};
-        AppState.globalGoals = parsedState.globalGoals || [];
-        AppState.earnedBadges = new Set(parsedState.earnedBadges || []);
-        AppState.purchasedShopItems = new Set(parsedState.purchasedShopItems || []);
-        AppState.lastSummaryDate = parsedState.lastSummaryDate || null;
-        AppState.affirmations = parsedState.affirmations || AppState.affirmations;
-        AppState.userAffirmations = parsedState.userAffirmations || [];
-        AppState.journalEntries = parsedState.journalEntries || [];
-        
-        // Personalization & Settings State
-        AppState.userName = parsedState.userName || null;
-        AppState.difficulty = parsedState.difficulty || 'normal';
-        AppState.selectedSkills = new Set(parsedState.selectedSkills || []);
-        AppState.isPersonalized = parsedState.isPersonalized || false;
-        AppState.theme = parsedState.theme || 'light';
-        AppState.customThemeColors = parsedState.customThemeColors || null;
-        AppState.notificationsEnabled = typeof parsedState.notificationsEnabled === 'boolean' ? parsedState.notificationsEnabled : true;
-        AppState.reduceMotion = typeof parsedState.reduceMotion === 'boolean' ? parsedState.reduceMotion : false;
-        AppState.customPillars = parsedState.customPillars || [];
-        AppState.customSkills = parsedState.customSkills || [];
-
-        // Initialize dynamic pillar/skill data
-        pillarsData = [...defaultPillarsData, ...AppState.customPillars];
-        skillsData = [...defaultSkillsData, ...AppState.customSkills];
-
+        // Special handling for date objects
         AppState.startDate = parsedState.startDate ? new Date(parsedState.startDate) : null;
-        AppState.lastVisitDate = parsedState.lastVisitDate || null;
-        AppState.currentView = parsedState.currentView || 'dashboard'; // Ensure currentView is loaded
     }
 
+    // Ensure sets are re-created correctly (if they were stored as arrays)
+    AppState.completedDays = new Set(AppState.completedDays);
+    AppState.selectedSkills = new Set(AppState.selectedSkills);
+    AppState.earnedBadges = new Set(AppState.earnedBadges);
+    AppState.purchasedShopItems = new Set(AppState.purchasedShopItems);
+
+    // Initialize dynamic pillar/skill data based on loaded custom data
+    pillarsData = [...defaultPillarsData, ...AppState.customPillars];
+    skillsData = [...defaultSkillsData, ...AppState.customSkills];
+
+    // --- Day Synchronization Logic ---
     const todayActual = new Date();
-    todayActual.setHours(0, 0, 0, 0);
+    todayActual.setHours(0, 0, 0, 0); // Normalize to start of current local day
     const todayFormatted = formatDate(todayActual);
 
-    if (!AppState.startDate) {
-        AppState.startDate = new Date(todayActual);
-        AppState.lastVisitDate = todayFormatted;
-        saveState();
-    }
+    // If it's the very first launch OR personalization was just completed
+    if (!AppState.isPersonalized || !AppState.startDate) {
+        // Personalization menu will handle setting AppState.startDate
+        // AppState.today will be 1 until personalization is complete
+        AppState.today = 1;
+        AppState.lastVisitDate = todayFormatted; // Set last visit to today if first launch
+        saveState(); // Save the initial state with proper startDate
+    } else {
+        // Calculate AppState.today based on startDate and current actual date
+        AppState.today = getDayDifference(AppState.startDate, todayActual) + 1;
 
-    const diffTime = Math.abs(todayActual.getTime() - AppState.startDate.getTime());
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    AppState.today = diffDays + 1;
+        // Handle daily reset logic only if it's a new day since last visit
+        if (AppState.lastVisitDate !== todayFormatted) {
+            const yesterdayFormatted = formatDate(new Date(todayActual.getTime() - (24 * 60 * 60 * 1000)));
+            const yesterdayActivity = AppState.dailyActivityMap[yesterdayFormatted];
 
-    // Handle missed days and streak reset on new day visit
-    if (AppState.lastVisitDate !== todayFormatted) {
-        const yesterdayFormatted = formatDate(new Date(todayActual.getTime() - (24 * 60 * 60 * 1000)));
-        const yesterdayActivity = AppState.dailyActivityMap[yesterdayFormatted];
-        
-        // If yesterday was not completed (main task), break streak
-        if (AppState.today > 1 && (!yesterdayActivity || !yesterdayActivity.main)) {
-            // Only prompt if a reason hasn't been set for yesterday
-            if (!(yesterdayActivity && yesterdayActivity.missedReason)) {
-                showMissedReasonModal(yesterdayFormatted);
+            // If yesterday's main task was NOT completed AND it wasn't skipped with a rest day, break streak
+            if (AppState.today > 1 && (!yesterdayActivity || !yesterdayActivity.main || yesterdayActivity.skippedWithRestDay === false && !yesterdayActivity.main)) {
+                if (!(yesterdayActivity && yesterdayActivity.missedReason)) {
+                    // Only prompt if a reason hasn't been set
+                    showMissedReasonModal(yesterdayFormatted);
+                }
+                AppState.currentStreak = 0; // Break streak regardless if yesterday was missed
             }
-            AppState.currentStreak = 0; // Break streak regardless if yesterday was missed
-        }
 
-        AppState.lastVisitDate = todayFormatted;
-        AppState.dailyFocusCompletedToday = false;
-        AppState.dailyFocusTasks = [];
-        saveState();
+            // Reset daily focus and micro-challenge for the new day
+            AppState.dailyFocusCompletedToday = false;
+            AppState.dailyFocusTasks = []; // Clear previous daily focus tasks
+            AppState.lastDailyFocusDate = todayFormatted; // Update last daily focus generation date
+
+            AppState.lastMicroChallengeDate = todayFormatted; // Update last micro challenge date
+            // Note: micro-challenges themselves are in AppState.microChallenges, and we just need to ensure the daily one is set as uncompleted for the new day in renderDailyFocus.
+            const todayMicroChallenge = AppState.microChallenges.find(mc => mc.date === todayFormatted);
+            if (todayMicroChallenge) {
+                todayMicroChallenge.completed = false; // Reset completion status for new day
+            }
+            
+            AppState.lastVisitDate = todayFormatted; // Update last visit date
+            saveState();
+        }
     }
 
-    applyTheme(AppState.theme, false); // Apply theme on load
-    applyAccessibilitySettings();
+    applyTheme(AppState.theme, false); // Apply theme on load, don't save again
+    applyAccessibilitySettings(); // Apply accessibility settings
+    applyFontSettings(); // Apply font settings
 }
 
+/** Saves the entire app state to local storage. */
 function saveState() {
-    const stateToSave = {
-        completedDays: Array.from(AppState.completedDays),
-        currentStreak: AppState.currentStreak,
-        bestStreak: AppState.bestStreak,
-        dailyActivityMap: AppState.dailyActivityMap,
-        completedSkillTasks: AppState.completedSkillTasks,
-        completedPillarTasks: AppState.completedPillarTasks,
-        tokens: AppState.tokens,
-        dailyFocusTasks: AppState.dailyFocusTasks,
-        dailyFocusCompletedToday: AppState.dailyFocusCompletedToday,
-        lastDailyFocusDate: AppState.lastDailyFocusDate,
-        nextDailyFocusBonus: AppState.nextDailyFocusBonus,
-        restDaysAvailable: AppState.restDaysAvailable,
-        userGoals: AppState.userGoals,
-        globalGoals: AppState.globalGoals,
-        earnedBadges: Array.from(AppState.earnedBadges),
-        purchasedShopItems: Array.from(AppState.purchasedShopItems),
-        lastSummaryDate: AppState.lastSummaryDate,
-        
-        userName: AppState.userName,
-        difficulty: AppState.difficulty,
-        selectedSkills: Array.from(AppState.selectedSkills),
-        isPersonalized: AppState.isPersonalized,
-
-        startDate: AppState.startDate ? formatDate(AppState.startDate) : null,
-        lastVisitDate: AppState.lastVisitDate,
-        currentView: AppState.currentView, // Save current view
-        affirmations: AppState.affirmations,
-        userAffirmations: AppState.userAffirmations,
-        journalEntries: AppState.journalEntries,
-        theme: AppState.theme,
-        customThemeColors: AppState.customThemeColors,
-        notificationsEnabled: AppState.notificationsEnabled,
-        reduceMotion: AppState.reduceMotion,
-        customPillars: AppState.customPillars,
-        customSkills: AppState.customSkills,
-    };
+    const stateToSave = {};
+    for (const key in AppState) {
+        if (AppState[key] instanceof Set) {
+            stateToSave[key] = Array.from(AppState[key]);
+        } else if (AppState[key] instanceof Date) {
+            stateToSave[key] = AppState[key].toISOString(); // Store Dates as ISO strings
+        } else {
+            stateToSave[key] = AppState[key];
+        }
+    }
     localStorage.setItem('glowUpAppState', JSON.stringify(stateToSave));
 }
 
 // --- Theme Management ---
+/** Applies the selected theme and optionally saves it. */
 function applyTheme(themeName, save = true) {
     document.documentElement.setAttribute('data-theme', themeName);
     if (save) {
@@ -755,12 +839,15 @@ function applyTheme(themeName, save = true) {
     }
 
     // Re-render charts to pick up new theme colors
-    renderProgressChart();
-    renderDailyCompletionChart();
-    renderStreakHistoryChart();
-    renderMoodTrendChart();
+    // These are called in renderAnalytics(), but ensure dashboard chart updates
+    if (AppState.currentView === 'dashboard') {
+        renderProgressChart();
+    } else if (AppState.currentView === 'analytics') {
+        renderAnalytics();
+    }
 }
 
+/** Saves the custom theme colors. */
 function saveCustomTheme() {
     const customColors = {};
     const colorInputs = document.querySelectorAll('#custom-theme-builder .color-input');
@@ -770,9 +857,10 @@ function saveCustomTheme() {
     });
     AppState.customThemeColors = customColors;
     applyTheme('custom'); // Re-apply theme to pick up new custom colors
-    showMessage('Custom theme applied and saved!');
+    showMessage('Custom theme applied and saved!', true);
 }
 
+/** Applies accessibility settings like reduced motion and notification preference. */
 function applyAccessibilitySettings() {
     if (AppState.reduceMotion) {
         document.documentElement.style.setProperty('transition', 'none', 'important');
@@ -785,10 +873,52 @@ function applyAccessibilitySettings() {
     if (reduceMotionToggle) {
         reduceMotionToggle.checked = AppState.reduceMotion;
     }
+
+    const notificationToggle = document.getElementById('notification-toggle');
+    const notificationTimeSetting = document.getElementById('notification-time-setting');
+    const notificationTimeInput = document.getElementById('notification-time');
+
+    if (notificationToggle) {
+        notificationToggle.checked = AppState.notificationsEnabled;
+        if (notificationTimeSetting) {
+            if (AppState.notificationsEnabled) {
+                notificationTimeSetting.classList.remove('hidden');
+            } else {
+                notificationTimeSetting.classList.add('hidden');
+            }
+        }
+    }
+    if (notificationTimeInput) {
+        notificationTimeInput.value = AppState.notificationTime;
+    }
+    // Note: Actual browser notifications require user permission and service workers,
+    // which are beyond the scope of a simple local-storage HTML app.
+    // This setting mainly controls the UI for notification preference.
 }
 
+/** Applies selected font size and family. */
+function applyFontSettings() {
+    document.documentElement.style.setProperty('font-size', getFontSizeValue(AppState.fontSize));
+    document.body.style.fontFamily = `'${AppState.fontFamily}', sans-serif`;
+
+    const fontSizeSelect = document.getElementById('font-size-select');
+    const fontFamilySelect = document.getElementById('font-family-select');
+    if (fontSizeSelect) fontSizeSelect.value = AppState.fontSize;
+    if (fontFamilySelect) fontFamilySelect.value = AppState.fontFamily;
+}
+
+/** Maps font size string to CSS value. */
+function getFontSizeValue(size) {
+    switch (size) {
+        case 'small': return '0.875rem'; // 14px
+        case 'medium': return '1rem'; // 16px (default)
+        case 'large': return '1.125rem'; // 18px
+        default: return '1rem';
+    }
+}
 
 // --- View Management ---
+/** Updates the currently displayed view. */
 function updateView(viewId) {
     document.querySelectorAll('.view, .detail-view').forEach(view => {
         view.classList.add('hidden');
@@ -803,10 +933,10 @@ function updateView(viewId) {
         targetView.classList.remove('hidden');
     } else {
         console.error(`View with ID '${viewId}' not found. Defaulting to dashboard.`);
-        viewId = 'dashboard'; // Fallback to dashboard
+        viewId = 'dashboard';
         document.getElementById(viewId).classList.remove('hidden');
     }
-    
+
     const navLink = document.querySelector(`.nav-link[data-view="${viewId}"]`);
     if (navLink) {
         navLink.classList.add('active');
@@ -836,6 +966,7 @@ function updateView(viewId) {
     } else if (viewId === 'achievements') {
         renderBadges();
     } else if (viewId === 'schedule') {
+        // Ensure the correct schedule is shown if user comes back to this view
         renderSchedule(document.getElementById('weekday-btn').classList.contains('bg-amber-500') ? 'weekday' : 'weekend');
     } else if (viewId === 'journal') {
         renderJournal();
@@ -849,6 +980,7 @@ function updateView(viewId) {
 
 // --- UI Rendering Functions ---
 
+/** Renders the personalization menu. */
 function renderPersonalizationMenu() {
     const skillsGrid = document.getElementById('personalization-skills-grid');
     if (!skillsGrid) return;
@@ -884,6 +1016,7 @@ function renderPersonalizationMenu() {
     renderUserAffirmations('user-affirmations-list');
 }
 
+/** Renders the user's custom affirmations in a given list element. */
 function renderUserAffirmations(targetElementId) {
     const userAffirmationsList = document.getElementById(targetElementId);
     if (!userAffirmationsList) return;
@@ -895,7 +1028,7 @@ function renderUserAffirmations(targetElementId) {
         AppState.userAffirmations.forEach((affirmation, index) => {
             userAffirmationsList.innerHTML += `
                 <div class="flex items-center justify-between bg-gray-100 p-2 rounded-md">
-                    <span>"${affirmation}"</span>
+                    <span class="text-primary">"${affirmation}"</span>
                     <button data-index="${index}" class="remove-affirmation-btn text-red-500 hover:text-red-700 text-lg leading-none">&times;</button>
                 </div>
             `;
@@ -906,17 +1039,17 @@ function renderUserAffirmations(targetElementId) {
                 AppState.userAffirmations.splice(indexToRemove, 1);
                 saveState();
                 renderUserAffirmations(targetElementId);
-                showMessage('Affirmation removed!');
+                showMessage('Affirmation removed!', true);
             });
         });
     }
 }
 
-
+/** Renders the main dashboard view. */
 async function renderDashboard() {
     const currentChallengeDay = AppState.today > TOTAL_CHALLENGE_DAYS ? TOTAL_CHALLENGE_DAYS : AppState.today;
-    const taskForToday = dailyTasks.find(t => t.day === currentChallengeDay) || dailyTasks[dailyTasks.length - 1]; // Fallback to last task
-    
+    const taskForToday = dailyTasks.find(t => t.day === currentChallengeDay) || dailyTasks[dailyTasks.length - 1];
+
     document.getElementById('today-day').textContent = currentChallengeDay;
     document.getElementById('today-task').textContent = taskForToday.task;
     document.getElementById('display-user-name').textContent = AppState.userName || 'Glow-Upper';
@@ -968,39 +1101,40 @@ async function renderDashboard() {
     document.getElementById('mood-select').value = todayActivity.mood || '';
     document.getElementById('daily-highlight-input').value = todayActivity.highlight || '';
 
-    // Remove old listeners before adding new ones to prevent duplicates
+    // Clear existing event listeners for mood and highlight to prevent duplicates
     const moodSelect = document.getElementById('mood-select');
     const dailyHighlightInput = document.getElementById('daily-highlight-input');
-    
-    // Clear existing event listeners
-    moodSelect.removeEventListener('change', AppState.moodSelectHandler);
-    dailyHighlightInput.removeEventListener('input', AppState.dailyHighlightInputHandler);
 
-    // Define new handlers and store them in AppState for easy removal
-    AppState.moodSelectHandler = (e) => {
-        AppState.dailyActivityMap[todayFormatted] = AppState.dailyActivityMap[todayFormatted] || { main: false, focus: false, mood: '', highlight: '', missedReason: '' };
+    // Remove previous listeners if they exist
+    if (moodSelect._changeListener) {
+        moodSelect.removeEventListener('change', moodSelect._changeListener);
+    }
+    if (dailyHighlightInput._inputListener) {
+        dailyHighlightInput.removeEventListener('input', dailyHighlightInput._inputListener);
+    }
+
+    // Define and attach new listeners, storing them for later removal
+    moodSelect._changeListener = (e) => {
+        AppState.dailyActivityMap[todayFormatted] = AppState.dailyActivityMap[todayFormatted] || {};
         AppState.dailyActivityMap[todayFormatted].mood = e.target.value;
         saveState();
     };
-    AppState.dailyHighlightInputHandler = (e) => {
-        AppState.dailyActivityMap[todayFormatted] = AppState.dailyActivityMap[todayFormatted] || { main: false, focus: false, mood: '', highlight: '', missedReason: '' };
+    dailyHighlightInput._inputListener = (e) => {
+        AppState.dailyActivityMap[todayFormatted] = AppState.dailyActivityMap[todayFormatted] || {};
         AppState.dailyActivityMap[todayFormatted].highlight = e.target.value;
         saveState();
     };
 
-    // Add new event listeners
-    moodSelect.addEventListener('change', AppState.moodSelectHandler);
-    dailyHighlightInput.addEventListener('input', AppState.dailyHighlightInputHandler);
-
+    moodSelect.addEventListener('change', moodSelect._changeListener);
+    dailyHighlightInput.addEventListener('input', dailyHighlightInput._inputListener);
 
     const streakVisualElement = document.getElementById('current-streak-visual');
     if (streakVisualElement) {
         streakVisualElement.innerHTML = '';
         if (AppState.currentStreak > 0) {
             let fireEmojis = '';
-            for (let i = 0; i < AppState.currentStreak; i++) {
+            for (let i = 0; i < Math.min(AppState.currentStreak, 5); i++) { // Limit to 5 emojis
                 fireEmojis += '🔥';
-                if (i >= 5) break; // Limit emojis for visual sanity
             }
             streakVisualElement.textContent = `${fireEmojis} ${AppState.currentStreak}`;
         } else {
@@ -1008,19 +1142,17 @@ async function renderDashboard() {
         }
     }
 
-
     const upcomingMissionsList = document.getElementById('upcoming-missions-list');
     if (upcomingMissionsList) {
         upcomingMissionsList.innerHTML = '';
-        // Filter to show tasks that are NOT completed and are in the future
         const upcoming = dailyTasks.filter(task => !AppState.completedDays.has(task.day) && task.day > AppState.today).slice(0, 3);
 
         if (upcoming.length > 0) {
             upcoming.forEach(mission => {
                 upcomingMissionsList.innerHTML += `
                     <div class="flex items-center space-x-2">
-                        <span class="text-amber-500 font-semibold">Day ${mission.day}:</span>
-                        <span class="text-sm">${mission.task}</span>
+                        <span class="text-brand-primary font-semibold">Day ${mission.day}:</span>
+                        <span class="text-sm text-primary">${mission.task}</span>
                     </div>
                 `;
             });
@@ -1030,8 +1162,10 @@ async function renderDashboard() {
     }
 
     renderProgressChart();
+    renderInspirationCarousel(); // New: Render inspiration carousel
 }
 
+/** Renders the calendar grid. */
 function renderCalendar() {
     const grid = document.getElementById('calendar-grid');
     if (!grid) return;
@@ -1041,29 +1175,28 @@ function renderCalendar() {
         dayEl.dataset.day = task.day;
         dayEl.className = 'day-cell h-20 sm:h-24 flex items-center justify-center font-bold text-xl rounded-lg cursor-pointer transition-all duration-300';
         dayEl.textContent = task.day;
-        
-        // Calculate the actual date for the calendar cell based on startDate
+
         const cellDate = new Date(AppState.startDate.getTime() + ( (task.day - 1) * 24 * 60 * 60 * 1000) );
         const dayKey = formatDate(cellDate);
         const activity = AppState.dailyActivityMap[dayKey] || { main: false, focus: false };
 
         let baseClasses = 'bg-secondary shadow-md hover:shadow-xl hover:-translate-y-1 border border-primary';
         if (AppState.completedDays.has(task.day)) {
-            if (activity.focus) { // If main task AND daily focus were completed
-                baseClasses = 'bg-green-200 text-green-800 shadow-sm border border-green-400 completed-all';
+            if (activity.focus) {
+                baseClasses = 'completed-all'; // Use CSS class that maps to theme var
             }
-            else { // If only main task was completed
-                baseClasses = 'bg-green-100 text-green-700 shadow-sm border border-green-200 completed-main';
+            else {
+                baseClasses = 'completed-main'; // Use CSS class that maps to theme var
             }
-        } else if (activity.focus && task.day < AppState.today) { // If only daily focus was completed but main task wasn't, and it's a past day
-            baseClasses = 'bg-green-50 text-green-700 shadow-sm border border-green-100 completed-focus';
+        } else if (activity.focus && task.day < AppState.today) {
+            baseClasses = 'completed-focus'; // Use CSS class that maps to theme var
         }
-        else if (task.day < AppState.today) { // If past day and no completion
-            baseClasses = 'bg-red-100 text-red-700 shadow-sm border border-red-300 missed';
+        else if (task.day < AppState.today) {
+            baseClasses = 'missed'; // Use CSS class that maps to theme var
         }
         
         if (task.day === AppState.today) {
-            baseClasses += ' ring-2 ring-amber-500 ring-offset-2';
+            baseClasses += ' ring-2 ring-brand-primary ring-offset-2';
         }
         
         dayEl.classList.add(...baseClasses.split(' '));
@@ -1071,6 +1204,7 @@ function renderCalendar() {
     });
 }
 
+/** Renders the main pillars grid. */
 function renderPillars() {
     const grid = document.getElementById('pillars-grid');
     if (!grid) return;
@@ -1081,7 +1215,7 @@ function renderPillars() {
             <div class="pillar-card card p-6 cursor-pointer" data-pillar-id="${pillar.id}">
                 <div class="pillar-card-header">
                     <span class="text-3xl mr-4">${pillar.icon}</span>
-                    <h4 class="font-bold text-xl">${pillar.title}</h4>
+                    <h4 class="font-bold text-xl text-primary">${pillar.title}</h4>
                 </div>
                 <span class="view-detail-icon">→</span>
             </div>
@@ -1095,6 +1229,7 @@ function renderPillars() {
     });
 }
 
+/** Displays the detailed view for a single pillar. */
 function showPillarDetail(pillarId) {
     const allPillars = [...defaultPillarsData, ...AppState.customPillars];
     const pillar = allPillars.find(p => p.id === pillarId);
@@ -1112,7 +1247,7 @@ function showPillarDetail(pillarId) {
     const tasksContainer = document.getElementById('pillar-detail-tasks');
     if (!tasksContainer) return;
     tasksContainer.innerHTML = '';
-    
+
     const completedTasks = AppState.completedPillarTasks[pillar.id] || [];
 
     pillar.tasks.forEach((taskText, index) => {
@@ -1133,15 +1268,12 @@ function showPillarDetail(pillarId) {
     if (pillarProgressText) pillarProgressText.textContent = `${progress}%`;
     if (pillarProgressBar) pillarProgressBar.style.width = `${progress}%`;
 
-
-    // Remove existing listeners before adding new ones to prevent duplicates
-    const oldPillarTaskBtns = tasksContainer.querySelectorAll('.pillar-task-btn');
-    oldPillarTaskBtns.forEach(btn => {
+    // Remove existing listeners before adding new ones
+    tasksContainer.querySelectorAll('.pillar-task-btn').forEach(btn => {
         const newBtn = btn.cloneNode(true);
         btn.parentNode.replaceChild(newBtn, btn);
     });
 
-    // Add new listeners
     tasksContainer.querySelectorAll('.pillar-task-btn').forEach(button => {
         button.addEventListener('click', (e) => {
             const clickedPillarId = e.target.dataset.pillarId;
@@ -1156,9 +1288,9 @@ function showPillarDetail(pillarId) {
                 saveState();
                 checkAchievements();
                 showPillarDetail(clickedPillarId); // Re-render detail view to update button state
-                showMessage(`Task completed for ${clickedPillarId}!`);
+                showMessage(`Task completed for ${clickedPillarId}!`, true);
             } else {
-                showMessage('Task already completed!');
+                showMessage('Task already completed!', false);
             }
         });
     });
@@ -1166,6 +1298,7 @@ function showPillarDetail(pillarId) {
     renderGoalsForEntity(pillar.id, 'pillar-goals-list', 'add-pillar-goal-input', 'add-pillar-goal-btn');
 }
 
+/** Renders the main skills grid. */
 function renderSkills() {
     const grid = document.getElementById('skills-grid');
     if (!grid) return;
@@ -1176,7 +1309,7 @@ function renderSkills() {
             <div class="skill-card card p-6 cursor-pointer" data-skill-id="${skill.id}">
                 <div class="skill-card-header">
                     <span class="text-3xl mr-4">${skill.icon}</span>
-                    <h4 class="font-bold text-xl">${skill.title}</h4>
+                    <h4 class="font-bold text-xl text-primary">${skill.title}</h4>
                 </div>
                 <span class="view-detail-icon">→</span>
             </div>
@@ -1191,6 +1324,7 @@ function renderSkills() {
     });
 }
 
+/** Displays the detailed view for a single skill. */
 function showSkillDetail(skillId) {
     const allSkills = [...defaultSkillsData, ...AppState.customSkills];
     const skill = allSkills.find(s => s.id === skillId);
@@ -1208,7 +1342,7 @@ function showSkillDetail(skillId) {
     const tasksContainer = document.getElementById('skill-detail-tasks');
     if (!tasksContainer) return;
     tasksContainer.innerHTML = '';
-    
+
     const completedTasks = AppState.completedSkillTasks[skill.id] || [];
 
     skill.tasks.forEach((taskText, index) => {
@@ -1229,14 +1363,12 @@ function showSkillDetail(skillId) {
     if (skillProgressText) skillProgressText.textContent = `${progress}%`;
     if (skillProgressBar) skillProgressBar.style.width = `${progress}%`;
 
-    // Remove existing listeners to prevent duplicates
-    const oldSkillTaskBtns = tasksContainer.querySelectorAll('.skill-task-btn');
-    oldSkillTaskBtns.forEach(btn => {
+    // Remove existing listeners before adding new ones
+    tasksContainer.querySelectorAll('.skill-task-btn').forEach(btn => {
         const newBtn = btn.cloneNode(true);
         btn.parentNode.replaceChild(newBtn, btn);
     });
 
-    // Add new listeners
     tasksContainer.querySelectorAll('.skill-task-btn').forEach(button => {
         button.addEventListener('click', (e) => {
             const clickedSkillId = e.target.dataset.skillId;
@@ -1251,9 +1383,9 @@ function showSkillDetail(skillId) {
                 saveState();
                 checkAchievements();
                 showSkillDetail(clickedSkillId); // Re-render detail view to update button state
-                showMessage(`Task completed for ${clickedSkillId}!`);
+                showMessage(`Task completed for ${clickedSkillId}!`, true);
             } else {
-                showMessage('Task already completed!');
+                showMessage('Task already completed!', false);
             }
         });
     });
@@ -1261,6 +1393,7 @@ function showSkillDetail(skillId) {
     renderGoalsForEntity(skill.id, 'skill-goals-list', 'add-skill-goal-input', 'add-skill-goal-btn');
 }
 
+/** Renders goals for a specific pillar or skill entity. */
 function renderGoalsForEntity(entityId, listId, inputId, buttonId) {
     const goalsList = document.getElementById(listId);
     if (!goalsList) {
@@ -1278,7 +1411,7 @@ function renderGoalsForEntity(entityId, listId, inputId, buttonId) {
                 <div class="goal-item ${goal.completed ? 'completed' : ''}">
                     <label class="flex items-center flex-grow cursor-pointer">
                         <input type="checkbox" class="goal-checkbox mr-3" data-goal-id="${goal.id}" data-entity-id="${entityId}" ${goal.completed ? 'checked disabled' : ''}>
-                        <span class="goal-text">${goal.text}</span>
+                        <span class="goal-text text-primary">${goal.text}</span>
                     </label>
                 </div>
             `;
@@ -1299,12 +1432,11 @@ function renderGoalsForEntity(entityId, listId, inputId, buttonId) {
             addGoalInput.value = '';
             saveState();
             renderGoalsForEntity(entityId, listId, inputId, buttonId);
-            showMessage('Goal added!');
+            showMessage('Goal added!', true);
         } else {
-            showMessage('Please enter a goal!');
+            showMessage('Please enter a goal!', false);
         }
     };
-
 
     goalsList.querySelectorAll('.goal-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => {
@@ -1317,12 +1449,13 @@ function renderGoalsForEntity(entityId, listId, inputId, buttonId) {
                 saveState();
                 checkAchievements();
                 renderGoalsForEntity(entityId, listId, inputId, buttonId);
-                showMessage('Goal completed! Great job!');
+                showMessage('Goal completed! Great job!', true);
             }
         });
     });
 }
 
+/** Renders global goals. */
 function renderGlobalGoals() {
     const globalGoalsList = document.getElementById('global-goals-list');
     if (!globalGoalsList) {
@@ -1339,7 +1472,7 @@ function renderGlobalGoals() {
                 <div class="goal-item ${goal.completed ? 'completed' : ''}">
                     <label class="flex items-center flex-grow cursor-pointer">
                         <input type="checkbox" class="goal-checkbox mr-3" data-goal-id="${goal.id}" data-global="true" ${goal.completed ? 'checked disabled' : ''}>
-                        <span class="goal-text">${goal.text}</span>
+                        <span class="goal-text text-primary">${goal.text}</span>
                     </label>
                 </div>
             `;
@@ -1349,7 +1482,6 @@ function renderGlobalGoals() {
     const addGlobalGoalButton = document.getElementById('add-global-goal-btn');
     const addGlobalGoalInput = document.getElementById('add-global-goal-input');
 
-    // Remove existing listener before adding new one
     const newAddGlobalGoalButton = addGlobalGoalButton.cloneNode(true);
     addGlobalGoalButton.parentNode.replaceChild(newAddGlobalGoalButton, addGlobalGoalButton);
     newAddGlobalGoalButton.onclick = () => {
@@ -1360,9 +1492,9 @@ function renderGlobalGoals() {
             addGlobalGoalInput.value = '';
             saveState();
             renderGlobalGoals();
-            showMessage('Global Goal added!');
+            showMessage('Global Goal added!', true);
         } else {
-            showMessage('Please enter a global goal!');
+            showMessage('Please enter a global goal!', false);
         }
     };
 
@@ -1376,19 +1508,19 @@ function renderGlobalGoals() {
                 saveState();
                 checkAchievements();
                 renderGlobalGoals();
-                showMessage('Global Goal completed! Awesome!');
+                showMessage('Global Goal completed! Awesome!', true);
             }
         });
     });
 }
 
-
+/** Renders daily skill focus tasks. */
 function renderDailyFocus() {
     const todayFormatted = formatDate(new Date());
     const dailyTasksContainer = document.getElementById('daily-tasks-container');
     const claimTokensBtn = document.getElementById('claim-tokens-btn');
     const tokensDisplay = document.getElementById('tokens-display');
-    
+
     if (!dailyTasksContainer || !claimTokensBtn || !tokensDisplay) {
         console.error("Missing elements for daily focus rendering.");
         return;
@@ -1400,14 +1532,12 @@ function renderDailyFocus() {
     if (AppState.lastDailyFocusDate !== todayFormatted || AppState.dailyFocusTasks.length === 0) {
         AppState.dailyFocusCompletedToday = false;
         AppState.lastDailyFocusDate = todayFormatted;
-        AppState.dailyFocusTasks = [];
+        AppState.dailyFocusTasks = []; // Clear previous tasks
 
         let availableSkillsForFocus = [];
-        // Prioritize user-selected skills for daily focus
         if (AppState.selectedSkills.size > 0) {
             availableSkillsForFocus = Array.from(AppState.selectedSkills);
         } else {
-            // If no skills selected, use all default skills
             availableSkillsForFocus = defaultSkillsData.map(s => s.id);
         }
 
@@ -1422,10 +1552,10 @@ function renderDailyFocus() {
             }
         });
 
-        // Shuffle all available tasks and pick MAX_DAILY_SKILL_TASKS
-        const shuffledAllTasks = allSkillTasks.sort(() => 0.5 - Math.random());
-        for (let i = 0; i < Math.min(MAX_DAILY_SKILL_TASKS, shuffledAllTasks.length); i++) {
-            const task = shuffledAllTasks[i];
+        shuffleArray(allSkillTasks); // Shuffle all available tasks
+
+        for (let i = 0; i < Math.min(MAX_DAILY_SKILL_TASKS, allSkillTasks.length); i++) {
+            const task = allSkillTasks[i];
             AppState.dailyFocusTasks.push({
                 skillId: task.skillId,
                 taskIndex: task.taskIndex,
@@ -1434,7 +1564,7 @@ function renderDailyFocus() {
                 completed: false
             });
         }
-        saveState();
+        saveState(); // Save newly generated tasks
     }
 
     dailyTasksContainer.innerHTML = '';
@@ -1449,13 +1579,12 @@ function renderDailyFocus() {
                     <label class="flex items-center flex-grow cursor-pointer">
                         <input type="checkbox" class="daily-skill-task-checkbox mr-3" data-task-index="${index}" ${isCompleted ? 'checked disabled' : ''}>
                         <span class="text-xl mr-2">${task.skillIcon}</span>
-                        <span class="flex-grow">${task.taskText}</span>
+                        <span class="flex-grow text-primary">${task.taskText}</span>
                     </label>
                 </div>
             `;
         });
-        
-        // Check if all daily focus tasks are completed to enable claim button
+
         const allTasksCompleted = AppState.dailyFocusTasks.every(task => task.completed);
         if (allTasksCompleted && !AppState.dailyFocusCompletedToday) {
             claimTokensBtn.disabled = false;
@@ -1464,13 +1593,18 @@ function renderDailyFocus() {
         }
     }
 
-    // Add event listeners for daily focus task checkboxes
+    // Remove old listeners to prevent duplicates
+    dailyTasksContainer.querySelectorAll('.daily-skill-task-checkbox').forEach(checkbox => {
+        const newCheckbox = checkbox.cloneNode(true);
+        checkbox.parentNode.replaceChild(newCheckbox, checkbox);
+    });
+
     dailyTasksContainer.querySelectorAll('.daily-skill-task-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => {
-            const taskIndex = parseInt(e.target.dataset.task-index);
+            const taskIndex = parseInt(e.target.dataset.taskIndex);
             if (e.target.checked) {
                 AppState.dailyFocusTasks[taskIndex].completed = true;
-                e.target.disabled = true; // Disable after checking
+                e.target.disabled = true;
                 saveState();
                 renderDailyFocus(); // Re-render to update claim button
             }
@@ -1478,6 +1612,7 @@ function renderDailyFocus() {
     });
 }
 
+/** Renders the shop items. */
 function renderShop() {
     const shopItemsGrid = document.getElementById('shop-items-grid');
     const shopTokensDisplay = document.getElementById('shop-tokens-display');
@@ -1494,9 +1629,9 @@ function renderShop() {
         shopItemsGrid.innerHTML += `
             <div class="shop-item-card card p-6 flex flex-col items-center text-center">
                 <span class="text-5xl mb-3">${item.icon}</span>
-                <h4 class="font-bold text-xl mb-2">${item.name}</h4>
+                <h4 class="font-bold text-xl mb-2 text-primary">${item.name}</h4>
                 <p class="text-secondary text-sm mb-4">${item.description}</p>
-                <p class="font-semibold text-lg mb-4">Cost: ${item.cost} ✨ Tokens</p>
+                <p class="font-semibold text-lg mb-4 text-brand-primary">Cost: ${item.cost} ✨ Tokens</p>
                 <button data-item-id="${item.id}" class="shop-buy-btn w-full py-2 px-4 rounded-lg font-semibold" ${isDisabled ? 'disabled' : ''}>
                     ${isPurchased ? 'Purchased' : (canAfford ? 'Buy Now' : 'Cannot Afford')}
                 </button>
@@ -1504,7 +1639,13 @@ function renderShop() {
         `;
     });
 
-    document.querySelectorAll('.shop-buy-btn').forEach(button => {
+    // Remove existing listeners before adding new ones
+    shopItemsGrid.querySelectorAll('.shop-buy-btn').forEach(btn => {
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+    });
+
+    shopItemsGrid.querySelectorAll('.shop-buy-btn').forEach(button => {
         button.addEventListener('click', (e) => {
             const itemId = e.target.dataset.itemId;
             const item = shopItems.find(i => i.id === itemId);
@@ -1512,37 +1653,74 @@ function renderShop() {
             if (item && AppState.tokens >= item.cost && !AppState.purchasedShopItems.has(item.id)) {
                 AppState.tokens -= item.cost;
                 AppState.purchasedShopItems.add(item.id);
-                
+
                 // Apply item effect
                 if (itemId === 'rest-day') {
                     AppState.restDaysAvailable++;
-                    showMessage(`You gained a rest day! You now have ${AppState.restDaysAvailable}.`);
+                    showMessage(`You gained a rest day! You now have ${AppState.restDaysAvailable}.`, true);
                 } else if (itemId === 'instant-tip') {
                     const randomAffirmation = AppState.affirmations[Math.floor(Math.random() * AppState.affirmations.length)];
                     showMessage(`💡 Instant Tip: "${randomAffirmation}"`, true);
                 } else if (itemId === 'token-bonus') {
                     AppState.tokens += 5;
-                    showMessage('Received 5 bonus tokens!');
+                    showMessage('Received 5 bonus tokens!', true);
                 } else if (itemId === 'skill-xp-boost') {
-                    AppState.nextDailyFocusBonus = 2; // Double next token reward
-                    showMessage('Your next daily skill focus will earn double tokens!');
+                    AppState.nextDailyFocusBonus = 2;
+                    showMessage('Your next daily skill focus will earn double tokens!', true);
                 } else if (itemId === 'mystery-box') {
-                    const rewards = ['5 tokens', '1 rest day', 'random affirmation', 'streak-shield (prevents 1 streak break)'];
+                    const rewards = ['5 tokens', '1 rest day', 'random affirmation', 'quiz-pass'];
                     const randomReward = rewards[Math.floor(Math.random() * rewards.length)];
+                    let msg = `Mystery Box Revealed: `;
                     if (randomReward.includes('tokens')) {
-                        AppState.tokens += parseInt(randomReward.split(' ')[0]);
+                        const bonus = parseInt(randomReward.split(' ')[0]);
+                        AppState.tokens += bonus;
+                        msg += `${bonus} tokens!`;
                     } else if (randomReward.includes('rest day')) {
                         AppState.restDaysAvailable++;
+                        msg += `1 rest day!`;
                     } else if (randomReward.includes('affirmation')) {
                         const affirmation = AppState.affirmations[Math.floor(Math.random() * AppState.affirmations.length)];
-                        showMessage(`Mystery Box Reward: A new affirmation! "${affirmation}"`, true);
-                    } else if (randomReward.includes('streak-shield')) {
-                        // Implement streak shield logic if needed
-                        showMessage('Mystery Box Reward: A streak shield! (Future feature)');
+                        AppState.userAffirmations.push(affirmation); // Add to user affirmations
+                        msg += `A new affirmation: "${affirmation}"`;
+                    } else if (randomReward.includes('quiz-pass')) {
+                        const uncompletedQuizzes = AppState.quizzes.filter(q => !q.completed);
+                        if (uncompletedQuizzes.length > 0) {
+                            const quizToPass = uncompletedQuizzes[Math.floor(Math.random() * uncompletedQuizzes.length)];
+                            quizToPass.completed = true;
+                            quizToPass.score = quizToPass.questions.length; // Max score
+                            msg += `A free pass for Quiz: "${quizToPass.name}"!`;
+                        } else {
+                            AppState.tokens += 10; // If no quizzes, give bonus tokens
+                            msg += `No uncompleted quizzes, so here are 10 bonus tokens!`;
+                        }
                     }
-                    showMessage(`Mystery Box Revealed: ${randomReward}!`);
+                    showMessage(msg, true);
+                } else if (itemId === 'badge-unlock') {
+                    const unearnedBadges = badgesData.filter(badge => !AppState.earnedBadges.has(badge.id));
+                    if (unearnedBadges.length > 0) {
+                        shuffleArray(unearnedBadges);
+                        const badgeToUnlock = unearnedBadges[0];
+                        AppState.earnedBadges.add(badgeToUnlock.id);
+                        showMessage(`You unlocked the badge: "${badgeToUnlock.name}"! 🎖️`, true);
+                    } else {
+                        AppState.tokens += 20; // Refund if no badges to unlock
+                        showMessage('No unearned badges, so here are 20 bonus tokens!', true);
+                    }
+                } else if (itemId === 'affirmation-pack') {
+                    const newAffirmations = [
+                        "I am growing and improving every day.",
+                        "My efforts today create my success tomorrow.",
+                        "I am resilient, capable, and strong.",
+                        "Every challenge is an opportunity to learn.",
+                        "I choose joy and positivity."
+                    ];
+                    shuffleArray(newAffirmations);
+                    for(let i=0; i<Math.min(5, newAffirmations.length); i++) {
+                        AppState.userAffirmations.push(newAffirmations[i]);
+                    }
+                    showMessage(`You added 5 new affirmations to your collection!`, true);
                 }
-                
+
                 saveState();
                 renderShop(); // Re-render shop to update token display and button states
                 renderDashboard(); // Update dashboard for rest days display
@@ -1556,6 +1734,7 @@ function renderShop() {
     });
 }
 
+/** Renders earned badges. */
 function renderBadges() {
     const badgesGrid = document.getElementById('badges-grid');
     const noBadgesMsg = document.getElementById('no-badges-msg');
@@ -1568,9 +1747,9 @@ function renderBadges() {
         const isEarned = AppState.earnedBadges.has(badge.id);
         if (isEarned) badgesEarnedCount++;
         badgesGrid.innerHTML += `
-            <div class="badge-card ${isEarned ? 'earned' : 'locked'}">
+            <div class="badge-card ${isEarned ? 'earned' : 'locked'} ${badge.tier || ''}">
                 <span class="badge-icon">${badge.icon}</span>
-                <h4 class="font-bold text-lg mb-1">${badge.name}</h4>
+                <h4 class="font-bold text-lg mb-1 text-primary">${badge.name}</h4>
                 <p class="text-secondary text-sm">${badge.description}</p>
                 <span class="badge-status ${isEarned ? 'earned' : 'locked'}">
                     ${isEarned ? 'Earned!' : 'Locked'}
@@ -1586,6 +1765,7 @@ function renderBadges() {
     }
 }
 
+/** Renders the daily schedule. */
 function renderSchedule(type) {
     const scheduleContent = document.getElementById('schedule-content');
     const weekdayBtn = document.getElementById('weekday-btn');
@@ -1602,22 +1782,23 @@ function renderSchedule(type) {
         weekendBtn.classList.add('bg-slate-200', 'text-slate-600');
     } else {
         weekendBtn.classList.add('bg-amber-500', 'text-white');
-        weekendBtn.classList.remove('bg-slate-200', 'text-slate-600');
+        weekendBtn.classList.remove('bg-slate-200', 'text-white');
         weekdayBtn.classList.remove('bg-amber-500', 'text-white');
         weekdayBtn.classList.add('bg-slate-200', 'text-slate-600');
     }
 }
 
+/** Renders the journal entries and current day's journal form. */
 async function renderJournal() {
     const journalInput = document.getElementById('journal-input');
     const journalMoodSelect = document.getElementById('journal-mood-select');
-    const journalEntriesList = document.getElementById('journal-entries-list');
+    const journalTagsInput = document.getElementById('journal-tags-input'); // New
     const journalPromptElement = document.getElementById('journal-prompt');
     const todayFormatted = formatDate(new Date());
 
-    if (!journalInput || !journalMoodSelect || !journalEntriesList || !journalPromptElement) return;
+    if (!journalInput || !journalMoodSelect || !journalTagsInput || !journalPromptElement) return;
 
-    // Set today's prompt
+    // Set today's prompt (randomly selected from prompts array)
     journalPromptElement.textContent = journalPrompts[Math.floor(Math.random() * journalPrompts.length)];
 
     // Load today's journal entry if it exists
@@ -1625,15 +1806,17 @@ async function renderJournal() {
     if (todayEntry) {
         journalInput.value = todayEntry.content || '';
         journalMoodSelect.value = todayEntry.mood || '';
+        journalTagsInput.value = todayEntry.tags ? todayEntry.tags.join(', ') : ''; // Display tags
     } else {
         journalInput.value = '';
         journalMoodSelect.value = '';
+        journalTagsInput.value = '';
     }
 
-    // Filter and render past entries
-    renderFilteredJournalEntries();
+    renderFilteredJournalEntries(); // Render past entries
 }
 
+/** Filters and renders journal entries based on date and search term. */
 function renderFilteredJournalEntries() {
     const journalEntriesList = document.getElementById('journal-entries-list');
     const filterDate = document.getElementById('journal-filter-date').value;
@@ -1644,7 +1827,11 @@ function renderFilteredJournalEntries() {
     journalEntriesList.innerHTML = '';
     const filteredEntries = AppState.journalEntries.filter(entry => {
         const matchesDate = !filterDate || entry.date === filterDate;
-        const matchesSearch = !searchTerm || entry.content.toLowerCase().includes(searchTerm) || entry.mood.toLowerCase().includes(searchTerm) || (entry.highlight && entry.highlight.toLowerCase().includes(searchTerm));
+        const matchesSearch = !searchTerm ||
+                              (entry.content && entry.content.toLowerCase().includes(searchTerm)) ||
+                              (entry.mood && entry.mood.toLowerCase().includes(searchTerm)) ||
+                              (entry.highlight && entry.highlight.toLowerCase().includes(searchTerm)) ||
+                              (entry.tags && entry.tags.some(tag => tag.toLowerCase().includes(searchTerm)));
         return matchesDate && matchesSearch;
     }).sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort by newest first
 
@@ -1660,6 +1847,7 @@ function renderFilteredJournalEntries() {
                     </div>
                     <p class="text-primary mb-2">${entry.content}</p>
                     ${entry.highlight ? `<p class="text-secondary text-sm italic">Highlight: ${entry.highlight}</p>` : ''}
+                    ${entry.tags && entry.tags.length > 0 ? `<div class="text-xs text-secondary italic mt-2">Tags: ${entry.tags.map(tag => `<span class="bg-gray-200 rounded-full px-2 py-1 mr-1">#${tag}</span>`).join('')}</div>` : ''}
                     <button data-id="${entry.id}" class="delete-journal-entry-btn text-red-500 hover:text-red-700 text-sm mt-3 float-right">Delete</button>
                 </div>
             `;
@@ -1671,12 +1859,14 @@ function renderFilteredJournalEntries() {
                 AppState.journalEntries = AppState.journalEntries.filter(entry => entry.id !== entryIdToDelete);
                 saveState();
                 renderFilteredJournalEntries();
-                showMessage('Journal entry deleted!');
+                checkAchievements(); // Journal count might change
+                showMessage('Journal entry deleted!', true);
             });
         });
     }
 }
 
+/** Renders analytics overview with charts and progress displays. */
 function renderAnalytics() {
     renderDailyCompletionChart();
     renderStreakHistoryChart();
@@ -1686,6 +1876,7 @@ function renderAnalytics() {
     renderAchievementsOverview();
 }
 
+/** Gets theme-dependent chart colors. */
 function getChartColors() {
     const style = getComputedStyle(document.body);
     return {
@@ -1694,10 +1885,13 @@ function getChartColors() {
         textPrimary: style.getPropertyValue('--text-primary').trim(),
         textSecondary: style.getPropertyValue('--text-secondary').trim(),
         bgSecondary: style.getPropertyValue('--bg-secondary').trim(),
-        borderPrimary: style.getPropertyValue('--border-primary').trim()
+        borderPrimary: style.getPropertyValue('--border-primary').trim(),
+        completedDayBg: style.getPropertyValue('--completed-day-bg').trim(),
+        missedDayBg: style.getPropertyValue('--missed-day-bg').trim()
     };
 }
 
+/** Renders the overall progress doughnut chart. */
 function renderProgressChart() {
     const ctx = document.getElementById('progressChart');
     if (!ctx) {
@@ -1711,14 +1905,14 @@ function renderProgressChart() {
     }
 
     const completedCount = AppState.completedDays.size;
-    const remainingDays = TOTAL_CHALLENGE_DAYS - AppState.today; // Days left to reach 90
+    const currentDayStatus = AppState.completedDays.has(AppState.today) ? 0 : 1; // 1 if current day is not yet completed
+    const remainingDaysCount = Math.max(0, TOTAL_CHALLENGE_DAYS - completedCount - currentDayStatus);
+
     const progressPercentage = TOTAL_CHALLENGE_DAYS > 0 ? Math.round((completedCount / TOTAL_CHALLENGE_DAYS) * 100) : 0;
 
     let message = '';
-    if (progressPercentage === 100) {
+    if (completedCount >= TOTAL_CHALLENGE_DAYS) { // Check completedCount against total days
         message = 'You\'ve completed the entire 90-Day Challenge! Amazing!';
-    } else if (AppState.today > TOTAL_CHALLENGE_DAYS) {
-        message = `You've passed Day ${TOTAL_CHALLENGE_DAYS}! You completed ${completedCount} days.`;
     } else {
         message = `You are ${progressPercentage}% through your journey! Keep pushing!`;
     }
@@ -1729,11 +1923,7 @@ function renderProgressChart() {
         data: {
             labels: ['Completed', 'Current Day', 'Remaining'],
             datasets: [{
-                data: [
-                    completedCount,
-                    AppState.completedDays.has(AppState.today) ? 0 : 1, // Current day
-                    Math.max(0, TOTAL_CHALLENGE_DAYS - completedCount - (AppState.completedDays.has(AppState.today) ? 0 : 1))
-                ],
+                data: [completedCount, currentDayStatus, remainingDaysCount],
                 backgroundColor: [primary, secondary, borderPrimary],
                 borderColor: bgSecondary,
                 borderWidth: 2
@@ -1778,21 +1968,22 @@ function renderProgressChart() {
     });
 }
 
+/** Renders the daily completion bar chart. */
 function renderDailyCompletionChart() {
     const ctx = document.getElementById('dailyCompletionChart');
     if (!ctx) return;
-    const { primary, textSecondary, bgSecondary, borderPrimary } = getChartColors();
+    const { primary, textSecondary, bgSecondary, borderPrimary, missedDayBg } = getChartColors();
 
     if (dailyCompletionChartInstance) {
         dailyCompletionChartInstance.destroy();
     }
 
     const labels = [];
-    const completionData = []; // 1 for completed, 0 for not
-    const missedData = []; // 1 for missed, 0 for not
+    const completionData = [];
+    const missedData = [];
 
-    const today = new Date();
-    today.setHours(0,0,0,0);
+    const todayActual = new Date();
+    todayActual.setHours(0,0,0,0);
 
     for (let i = 1; i <= AppState.today; i++) {
         const dayDate = new Date(AppState.startDate.getTime() + ((i - 1) * 24 * 60 * 60 * 1000));
@@ -1803,10 +1994,10 @@ function renderDailyCompletionChart() {
         if (activity.main) {
             completionData.push(1);
             missedData.push(0);
-        } else if (i < AppState.today) { // Past day and not completed
+        } else if (i < AppState.today) {
             completionData.push(0);
             missedData.push(1);
-        } else { // Current day, not yet completed
+        } else {
             completionData.push(0);
             missedData.push(0);
         }
@@ -1829,8 +2020,8 @@ function renderDailyCompletionChart() {
                 {
                     label: 'Missed',
                     data: missedData,
-                    backgroundColor: 'rgba(239, 68, 68, 0.7)', // Tailwind red-500 with opacity
-                    borderColor: 'rgb(239, 68, 68)',
+                    backgroundColor: missedDayBg,
+                    borderColor: missedDayBg,
                     borderWidth: 1,
                     barPercentage: 0.7,
                     categoryPercentage: 0.8
@@ -1870,7 +2061,7 @@ function renderDailyCompletionChart() {
                         font: { family: 'Inter' },
                         stepSize: 1,
                         callback: function(value) {
-                            return value === 1 ? 'Day' : ''; // Only show 1 as 'Day'
+                            return value === 1 ? 'Day' : '';
                         }
                     },
                     grid: {
@@ -1903,7 +2094,7 @@ function renderDailyCompletionChart() {
                                 const activity = AppState.dailyActivityMap[dayFormatted];
                                 return `Day Missed: ${activity?.missedReason || 'No reason recorded'}`;
                             }
-                            return null; // Hide labels for 0 values
+                            return null;
                         }
                     },
                     bodyFont: { family: 'Inter' },
@@ -1914,10 +2105,11 @@ function renderDailyCompletionChart() {
     });
 }
 
+/** Renders the streak history line chart. */
 function renderStreakHistoryChart() {
     const ctx = document.getElementById('streakHistoryChart');
     if (!ctx) return;
-    const { primary, secondary, textSecondary, bgSecondary, borderPrimary } = getChartColors();
+    const { primary, textSecondary, borderPrimary } = getChartColors();
 
     if (streakHistoryChartInstance) {
         streakHistoryChartInstance.destroy();
@@ -1926,13 +2118,9 @@ function renderStreakHistoryChart() {
     const labels = [];
     const streakData = [];
 
-    // Simulate streak history for the purpose of the chart
-    // In a real app, you might record streak length daily or upon streak breakage.
     let currentSimulatedStreak = 0;
-    const streakHistory = [];
-
-    const today = new Date();
-    today.setHours(0,0,0,0);
+    const todayActual = new Date();
+    todayActual.setHours(0,0,0,0);
 
     for (let i = 1; i <= AppState.today; i++) {
         const dayDate = new Date(AppState.startDate.getTime() + ((i - 1) * 24 * 60 * 60 * 1000));
@@ -1942,19 +2130,15 @@ function renderStreakHistoryChart() {
         const activity = AppState.dailyActivityMap[dayFormatted] || { main: false };
         if (activity.main) {
             currentSimulatedStreak++;
-        } else if (i < AppState.today) { // If it's a past day and not completed, streak breaks
+        } else if (i < AppState.today) {
             currentSimulatedStreak = 0;
         }
-        // For the current day, we show the current streak based on AppState.currentStreak
         if (i === AppState.today) {
             streakData.push(AppState.currentStreak);
         } else {
             streakData.push(currentSimulatedStreak);
         }
     }
-
-    // Adjust labels to be more readable for longer periods
-    const displayLabels = labels.filter((_, idx) => idx % Math.ceil(labels.length / 10) === 0);
 
     streakHistoryChartInstance = new Chart(ctx, {
         type: 'line',
@@ -1987,7 +2171,7 @@ function renderStreakHistoryChart() {
                         color: textSecondary,
                         font: { family: 'Inter' },
                         autoSkip: true,
-                        maxTicksLimit: 10 // Limit the number of ticks
+                        maxTicksLimit: 10
                     },
                     grid: {
                         color: borderPrimary
@@ -2004,7 +2188,7 @@ function renderStreakHistoryChart() {
                     ticks: {
                         color: textSecondary,
                         font: { family: 'Inter' },
-                        precision: 0 // Ensure whole numbers
+                        precision: 0
                     },
                     grid: {
                         color: borderPrimary
@@ -2030,27 +2214,24 @@ function renderStreakHistoryChart() {
     });
 }
 
+/** Renders the mood trend line chart. */
 function renderMoodTrendChart() {
     const ctx = document.getElementById('moodTrendChart');
     if (!ctx) return;
-    const { primary, secondary, textSecondary, bgSecondary, borderPrimary } = getChartColors();
+    const { primary, textSecondary, borderPrimary } = getChartColors();
 
     if (moodTrendChartInstance) {
         moodTrendChartInstance.destroy();
     }
 
     const labels = [];
-    const moodData = []; // Map moods to numerical values
+    const moodData = [];
     const moodMap = {
-        '😃': 5, // Great!
-        '😊': 4, // Good
-        '😐': 3, // Okay
-        '😔': 2, // Down
-        '😡': 1  // Frustrated
+        '😃': 5, '😊': 4, '😐': 3, '😔': 2, '😡': 1
     };
 
-    const today = new Date();
-    today.setHours(0,0,0,0);
+    const todayActual = new Date();
+    todayActual.setHours(0,0,0,0);
 
     for (let i = 1; i <= AppState.today; i++) {
         const dayDate = new Date(AppState.startDate.getTime() + ((i - 1) * 24 * 60 * 60 * 1000));
@@ -2058,7 +2239,7 @@ function renderMoodTrendChart() {
         labels.push(`Day ${i}`);
 
         const activity = AppState.dailyActivityMap[dayFormatted] || { mood: '' };
-        moodData.push(moodMap[activity.mood] || null); // Push null if no mood recorded
+        moodData.push(moodMap[activity.mood] || null);
     }
 
     moodTrendChartInstance = new Chart(ctx, {
@@ -2069,7 +2250,7 @@ function renderMoodTrendChart() {
                 label: 'Daily Mood',
                 data: moodData,
                 borderColor: primary,
-                backgroundColor: 'rgba(245, 158, 11, 0.2)', // brand-primary with opacity
+                backgroundColor: 'rgba(245, 158, 11, 0.2)',
                 fill: true,
                 tension: 0.3,
                 pointBackgroundColor: primary,
@@ -2113,7 +2294,7 @@ function renderMoodTrendChart() {
                         color: textSecondary,
                         font: { family: 'Inter' },
                         stepSize: 1,
-                        callback: function(value, index, values) {
+                        callback: function(value) {
                             const reverseMoodMap = Object.keys(moodMap).find(key => moodMap[key] === value);
                             return reverseMoodMap ? `${reverseMoodMap} (${value})` : '';
                         }
@@ -2152,7 +2333,7 @@ function renderMoodTrendChart() {
     });
 }
 
-
+/** Renders progress for all pillars and skills. */
 function renderPillarsSkillsProgress() {
     const container = document.getElementById('analytics-pillars-skills-progress');
     if (!container) return;
@@ -2172,9 +2353,9 @@ function renderPillarsSkillsProgress() {
         const completedTasksCount = AppState.completedPillarTasks[pillar.id] ? AppState.completedPillarTasks[pillar.id].length : 0;
         const totalTasks = pillar.tasks.length;
         const progress = totalTasks > 0 ? Math.round((completedTasksCount / totalTasks) * 100) : 0;
-        
+
         pillarsList.innerHTML += `
-            <div class="flex items-center justify-between p-2 rounded-md bg-gray-50 border border-gray-200">
+            <div class="flex items-center justify-between p-2 rounded-md bg-gray-50 border border-gray-200" style="background-color: var(--bg-primary); border-color: var(--border-primary);">
                 <span class="flex items-center">
                     <span class="text-xl mr-2">${pillar.icon}</span>
                     <span class="font-medium text-primary">${pillar.title}:</span>
@@ -2191,7 +2372,7 @@ function renderPillarsSkillsProgress() {
         const progress = totalTasks > 0 ? Math.round((completedTasksCount / totalTasks) * 100) : 0;
 
         skillsList.innerHTML += `
-            <div class="flex items-center justify-between p-2 rounded-md bg-gray-50 border border-gray-200">
+            <div class="flex items-center justify-between p-2 rounded-md bg-gray-50 border border-gray-200" style="background-color: var(--bg-primary); border-color: var(--border-primary);">
                 <span class="flex items-center">
                     <span class="text-xl mr-2">${skill.icon}</span>
                     <span class="font-medium text-primary">${skill.title}:</span>
@@ -2202,19 +2383,20 @@ function renderPillarsSkillsProgress() {
     });
 }
 
+/** Renders overview of all goals (global and entity-specific). */
 function renderGoalProgressOverview() {
     const container = document.getElementById('analytics-goal-progress');
     if (!container) return;
 
     container.innerHTML = '<h4 class="font-bold text-lg text-primary mb-3">Global Goals:</h4><div id="analytics-global-goals-list" class="space-y-2"></div>';
-    
+
     const globalGoalsList = document.getElementById('analytics-global-goals-list');
     if (AppState.globalGoals.length === 0) {
         globalGoalsList.innerHTML = '<p class="text-secondary italic text-sm">No global goals set yet.</p>';
     } else {
         AppState.globalGoals.forEach(goal => {
             globalGoalsList.innerHTML += `
-                <div class="flex items-center justify-between p-2 rounded-md bg-gray-50 border border-gray-200 ${goal.completed ? 'completed' : ''}">
+                <div class="flex items-center justify-between p-2 rounded-md bg-gray-50 border border-gray-200 ${goal.completed ? 'completed' : ''}" style="background-color: var(--bg-primary); border-color: var(--border-primary);">
                     <span class="flex items-center">
                         <span class="text-lg mr-2">${goal.completed ? '✅' : '⏳'}</span>
                         <span class="font-medium text-primary">${goal.text}</span>
@@ -2232,8 +2414,8 @@ function renderGoalProgressOverview() {
     let hasEntityGoals = false;
 
     for (const entityId in AppState.userGoals) {
-        if (entityId === 'global') continue; // Skip global goals as they are handled above
-        
+        if (entityId === 'global') continue;
+
         const entityGoals = AppState.userGoals[entityId];
         if (entityGoals.length > 0) {
             hasEntityGoals = true;
@@ -2243,7 +2425,7 @@ function renderGoalProgressOverview() {
             entityGoalsList.innerHTML += `<p class="font-semibold text-sm text-secondary mt-4 mb-2">${entityTitle}:</p>`;
             entityGoals.forEach(goal => {
                 entityGoalsList.innerHTML += `
-                    <div class="flex items-center justify-between p-2 rounded-md bg-gray-50 border border-gray-200 ${goal.completed ? 'completed' : ''}">
+                    <div class="flex items-center justify-between p-2 rounded-md bg-gray-50 border border-gray-200 ${goal.completed ? 'completed' : ''}" style="background-color: var(--bg-primary); border-color: var(--border-primary);">
                         <span class="flex items-center">
                             <span class="text-lg mr-2">${goal.completed ? '✅' : '⏳'}</span>
                             <span class="font-medium text-primary">${goal.text}</span>
@@ -2262,6 +2444,7 @@ function renderGoalProgressOverview() {
     }
 }
 
+/** Renders overview of earned achievements. */
 function renderAchievementsOverview() {
     const container = document.getElementById('analytics-achievements-overview');
     if (!container) return;
@@ -2274,11 +2457,11 @@ function renderAchievementsOverview() {
         if (isEarned) {
             earnedCount++;
             container.innerHTML += `
-                <div class="card p-4 flex items-center space-x-3 bg-green-50 border-green-200">
+                <div class="card p-4 flex items-center space-x-3 bg-green-50 border-green-200" style="background-color: var(--completed-day-bg); border-color: var(--completed-day-text);">
                     <span class="text-3xl">${badge.icon}</span>
                     <div>
-                        <h4 class="font-bold text-md text-green-800">${badge.name}</h4>
-                        <p class="text-sm text-green-700">Earned!</p>
+                        <h4 class="font-bold text-md text-primary">${badge.name}</h4>
+                        <p class="text-sm text-secondary">Earned!</p>
                     </div>
                 </div>
             `;
@@ -2290,88 +2473,31 @@ function renderAchievementsOverview() {
     }
 }
 
-
+/** Renders the settings view. */
 function renderSettings() {
     document.getElementById('settings-user-name').value = AppState.userName || '';
     document.getElementById('settings-difficulty-select').value = AppState.difficulty;
     document.getElementById('notification-toggle').checked = AppState.notificationsEnabled;
     document.getElementById('reduce-motion-toggle').checked = AppState.reduceMotion;
     document.getElementById('settings-theme-select').value = AppState.theme;
+    document.getElementById('notification-time').value = AppState.notificationTime;
+    document.getElementById('font-size-select').value = AppState.fontSize;
+    document.getElementById('font-family-select').value = AppState.fontFamily;
 
-    // Render custom affirmations in settings
+    // Show/hide notification time setting
+    const notificationTimeSetting = document.getElementById('notification-time-setting');
+    if (AppState.notificationsEnabled) {
+        notificationTimeSetting.classList.remove('hidden');
+    } else {
+        notificationTimeSetting.classList.add('hidden');
+    }
+
     renderUserAffirmations('settings-user-affirmations-list');
+    renderCustomPillarsInSettings();
+    renderCustomSkillsInSettings();
+    renderLearningResourcesInSettings();
+    renderQuizzesInSettings();
 
-    // Render custom pillars in settings
-    const customPillarsList = document.getElementById('settings-custom-pillars-list');
-    if (customPillarsList) {
-        customPillarsList.innerHTML = '';
-        if (AppState.customPillars.length === 0) {
-            customPillarsList.innerHTML = '<p class="text-secondary italic text-sm">No custom pillars added yet.</p>';
-        } else {
-            AppState.customPillars.forEach((pillar, index) => {
-                customPillarsList.innerHTML += `
-                    <div class="flex items-center justify-between bg-gray-100 p-2 rounded-md">
-                        <span class="flex items-center"><span class="text-xl mr-2">${pillar.icon}</span> ${pillar.title}</span>
-                        <button data-id="${pillar.id}" class="edit-custom-pillar-btn text-blue-500 hover:text-blue-700 mr-2">Edit</button>
-                        <button data-id="${pillar.id}" class="remove-custom-pillar-btn text-red-500 hover:text-red-700">&times;</button>
-                    </div>
-                `;
-            });
-            customPillarsList.querySelectorAll('.remove-custom-pillar-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const idToRemove = e.target.dataset.id;
-                    AppState.customPillars = AppState.customPillars.filter(p => p.id !== idToRemove);
-                    pillarsData = [...defaultPillarsData, ...AppState.customPillars]; // Update global reference
-                    saveState();
-                    renderSettings();
-                    showMessage('Custom Pillar removed!');
-                });
-            });
-            customPillarsList.querySelectorAll('.edit-custom-pillar-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const idToEdit = e.target.dataset.id;
-                    showCustomPillarSkillModal('edit-pillar', idToEdit);
-                });
-            });
-        }
-    }
-
-    // Render custom skills in settings
-    const customSkillsList = document.getElementById('settings-custom-skills-list');
-    if (customSkillsList) {
-        customSkillsList.innerHTML = '';
-        if (AppState.customSkills.length === 0) {
-            customSkillsList.innerHTML = '<p class="text-secondary italic text-sm">No custom skills added yet.</p>';
-        } else {
-            AppState.customSkills.forEach((skill, index) => {
-                customSkillsList.innerHTML += `
-                    <div class="flex items-center justify-between bg-gray-100 p-2 rounded-md">
-                        <span class="flex items-center"><span class="text-xl mr-2">${skill.icon}</span> ${skill.title}</span>
-                        <button data-id="${skill.id}" class="edit-custom-skill-btn text-blue-500 hover:text-blue-700 mr-2">Edit</button>
-                        <button data-id="${skill.id}" class="remove-custom-skill-btn text-red-500 hover:text-red-700">&times;</button>
-                    </div>
-                `;
-            });
-            customSkillsList.querySelectorAll('.remove-custom-skill-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const idToRemove = e.target.dataset.id;
-                    AppState.customSkills = AppState.customSkills.filter(s => s.id !== idToRemove);
-                    skillsData = [...defaultSkillsData, ...AppState.customSkills]; // Update global reference
-                    saveState();
-                    renderSettings();
-                    showMessage('Custom Skill removed!');
-                });
-            });
-            customSkillsList.querySelectorAll('.edit-custom-skill-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const idToEdit = e.target.dataset.id;
-                    showCustomPillarSkillModal('edit-skill', idToEdit);
-                });
-            });
-        }
-    }
-
-    // Show/hide custom theme builder based on selected theme
     const settingsThemeSelect = document.getElementById('settings-theme-select');
     if (settingsThemeSelect && settingsThemeSelect.value === 'custom') {
         document.getElementById('custom-theme-builder').classList.remove('hidden');
@@ -2380,35 +2506,212 @@ function renderSettings() {
     }
 }
 
+/** Helper to render custom pillars in settings. */
+function renderCustomPillarsInSettings() {
+    const customPillarsList = document.getElementById('settings-custom-pillars-list');
+    if (!customPillarsList) return;
+    customPillarsList.innerHTML = '';
+    if (AppState.customPillars.length === 0) {
+        customPillarsList.innerHTML = '<p class="text-secondary italic text-sm">No custom pillars added yet.</p>';
+    } else {
+        AppState.customPillars.forEach((pillar, index) => {
+            customPillarsList.innerHTML += `
+                <div class="flex items-center justify-between bg-gray-100 p-2 rounded-md" style="background-color: var(--bg-primary); border-color: var(--border-primary);">
+                    <span class="flex items-center text-primary"><span class="text-xl mr-2">${pillar.icon}</span> ${pillar.title}</span>
+                    <div>
+                        <button data-id="${pillar.id}" class="edit-custom-pillar-btn text-blue-500 hover:text-blue-700 mr-2">Edit</button>
+                        <button data-id="${pillar.id}" class="remove-custom-pillar-btn text-red-500 hover:text-red-700 text-lg leading-none">&times;</button>
+                    </div>
+                </div>
+            `;
+        });
+        customPillarsList.querySelectorAll('.remove-custom-pillar-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idToRemove = e.target.dataset.id;
+                AppState.customPillars = AppState.customPillars.filter(p => p.id !== idToRemove);
+                pillarsData = [...defaultPillarsData, ...AppState.customPillars];
+                saveState();
+                renderSettings();
+                showMessage('Custom Pillar removed!', true);
+            });
+        });
+        customPillarsList.querySelectorAll('.edit-custom-pillar-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idToEdit = e.target.dataset.id;
+                showCustomPillarSkillModal('edit-pillar', idToEdit);
+            });
+        });
+    }
+}
+
+/** Helper to render custom skills in settings. */
+function renderCustomSkillsInSettings() {
+    const customSkillsList = document.getElementById('settings-custom-skills-list');
+    if (!customSkillsList) return;
+    customSkillsList.innerHTML = '';
+    if (AppState.customSkills.length === 0) {
+        customSkillsList.innerHTML = '<p class="text-secondary italic text-sm">No custom skills added yet.</p>';
+    } else {
+        AppState.customSkills.forEach((skill, index) => {
+            customSkillsList.innerHTML += `
+                <div class="flex items-center justify-between bg-gray-100 p-2 rounded-md" style="background-color: var(--bg-primary); border-color: var(--border-primary);">
+                    <span class="flex items-center text-primary"><span class="text-xl mr-2">${skill.icon}</span> ${skill.title}</span>
+                    <div>
+                        <button data-id="${skill.id}" class="edit-custom-skill-btn text-blue-500 hover:text-blue-700 mr-2">Edit</button>
+                        <button data-id="${skill.id}" class="remove-custom-skill-btn text-red-500 hover:text-red-700 text-lg leading-none">&times;</button>
+                    </div>
+                </div>
+            `;
+        });
+        customSkillsList.querySelectorAll('.remove-custom-skill-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idToRemove = e.target.dataset.id;
+                AppState.customSkills = AppState.customSkills.filter(s => s.id !== idToRemove);
+                skillsData = [...defaultSkillsData, ...AppState.customSkills];
+                saveState();
+                renderSettings();
+                showMessage('Custom Skill removed!', true);
+            });
+        });
+        customSkillsList.querySelectorAll('.edit-custom-skill-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idToEdit = e.target.dataset.id;
+                showCustomPillarSkillModal('edit-skill', idToEdit);
+            });
+        });
+    }
+}
+
+/** Helper to render learning resources in settings. */
+function renderLearningResourcesInSettings() {
+    const list = document.getElementById('settings-learning-resources-list');
+    if (!list) return;
+    list.innerHTML = '';
+    if (AppState.learningResources.length === 0) {
+        list.innerHTML = '<p class="text-secondary italic text-sm">No learning resources added yet.</p>';
+    } else {
+        AppState.learningResources.forEach(resource => {
+            const entity = pillarsData.find(p => p.id === resource.associatedEntityId) || skillsData.find(s => s.id === resource.associatedEntityId);
+            const entityTitle = entity ? entity.title : 'N/A';
+            list.innerHTML += `
+                <div style="background-color: var(--bg-primary); border-color: var(--border-primary);">
+                    <div class="flex flex-col flex-grow">
+                        <a href="${resource.url}" target="_blank" class="font-semibold text-primary">${resource.name}</a>
+                        <span class="text-xs text-secondary">(${entityTitle})</span>
+                    </div>
+                    <button data-id="${resource.id}" class="remove-resource-btn text-red-500 hover:text-red-700 text-lg leading-none">&times;</button>
+                </div>
+            `;
+        });
+        list.querySelectorAll('.remove-resource-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idToRemove = e.target.dataset.id;
+                AppState.learningResources = AppState.learningResources.filter(r => r.id !== idToRemove);
+                saveState();
+                renderLearningResourcesInSettings();
+                showMessage('Learning resource removed!', true);
+            });
+        });
+    }
+}
+
+/** Helper to render quizzes in settings. */
+function renderQuizzesInSettings() {
+    const list = document.getElementById('settings-quizzes-list');
+    if (!list) return;
+    list.innerHTML = '';
+    if (AppState.quizzes.length === 0) {
+        list.innerHTML = '<p class="text-secondary italic text-sm">No quizzes created yet.</p>';
+    } else {
+        AppState.quizzes.forEach(quiz => {
+            list.innerHTML += `
+                <div style="background-color: var(--bg-primary); border-color: var(--border-primary);">
+                    <div class="flex flex-col flex-grow">
+                        <span class="font-semibold text-primary">${quiz.name}</span>
+                        <span class="text-xs text-secondary">${quiz.questions.length} Questions</span>
+                    </div>
+                    <div>
+                        <button data-id="${quiz.id}" class="edit-quiz-btn text-blue-500 hover:text-blue-700 mr-2">Edit</button>
+                        <button data-id="${quiz.id}" class="remove-quiz-btn text-red-500 hover:text-red-700 text-lg leading-none">&times;</button>
+                    </div>
+                </div>
+            `;
+        });
+        list.querySelectorAll('.remove-quiz-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idToRemove = e.target.dataset.id;
+                AppState.quizzes = AppState.quizzes.filter(q => q.id !== idToRemove);
+                saveState();
+                renderQuizzesInSettings();
+                showMessage('Quiz removed!', true);
+            });
+        });
+        list.querySelectorAll('.edit-quiz-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idToEdit = e.target.dataset.id;
+                showQuizModal('edit-quiz', idToEdit);
+            });
+        });
+    }
+}
+
+/** Renders the inspirational quote carousel. */
+function renderInspirationCarousel() {
+    const carousel = document.getElementById('inspiration-carousel');
+    const authorElement = document.getElementById('quote-author');
+    if (!carousel || !authorElement) return;
+
+    const quotes = [
+        { text: "The journey of a thousand miles begins with a single step.", author: "Lao Tzu" },
+        { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+        { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
+        { text: "It does not matter how slowly you go as long as you do not stop.", author: "Confucius" },
+        { text: "Your present circumstances don't determine where you can go; they merely determine where you start.", author: "Nido Qubein" },
+        { text: "What you do today can improve all your tomorrows.", author: "Ralph Marston" },
+        { text: "Success is not final, failure is not fatal: It is the courage to continue that counts.", author: "Winston S. Churchill" },
+        { text: "The future belongs to those who believe in the beauty of their dreams.", author: "Eleanor Roosevelt" },
+        { text: "Start where you are. Use what you have. Do what you can.", author: "Arthur Ashe" },
+        { text: "Opportunities don't happen. You create them.", author: "Chris Grosser" }
+    ];
+
+    shuffleArray(quotes);
+    const selectedQuote = quotes[0];
+
+    carousel.textContent = `"${selectedQuote.text}"`;
+    authorElement.textContent = `- ${selectedQuote.author}`;
+}
 
 // --- Modals and Messages ---
+
+/** Displays a temporary message box. */
 function showMessage(message, isSuccess = true) {
     const msgBox = document.getElementById('message-box');
     if (!msgBox) return;
 
     msgBox.textContent = message;
-    msgBox.style.backgroundColor = isSuccess ? 'var(--brand-primary)' : 'rgb(239, 68, 68)'; // Tailwind red-500
-    msgBox.style.color = isSuccess ? 'white' : 'white';
-    
-    // Animate in
+    msgBox.style.backgroundColor = isSuccess ? 'var(--brand-primary)' : 'rgb(239, 68, 68)';
+    msgBox.style.color = 'white'; // Always white text for messages
+
     msgBox.style.transform = 'translateY(0)';
     msgBox.style.opacity = '1';
 
     setTimeout(() => {
-        // Animate out
         msgBox.style.transform = 'translateY(20px)';
         msgBox.style.opacity = '0';
     }, 3000);
 }
 
+/** Shows a specific modal by ID. */
 function showModal(modalId) {
     document.getElementById(modalId).classList.remove('hidden');
 }
 
+/** Hides a specific modal by ID. */
 function hideModal(modalId) {
     document.getElementById(modalId).classList.add('hidden');
 }
 
+/** Shows the modal to record a missed day reason. */
 function showMissedReasonModal(dateKey) {
     const modal = document.getElementById('missed-reason-modal');
     if (!modal) return;
@@ -2419,22 +2722,16 @@ function showMissedReasonModal(dateKey) {
 let customModalMode = ''; // 'add-pillar', 'edit-pillar', 'add-skill', 'edit-skill'
 let customModalEntityId = null; // For editing mode
 
+/** Shows the modal for adding/editing custom pillars or skills. */
 function showCustomPillarSkillModal(mode, entityId = null) {
     customModalMode = mode;
     customModalEntityId = entityId;
 
-    const modal = document.getElementById('custom-pillar-skill-modal');
     const modalTitle = document.getElementById('custom-modal-title');
     const nameInput = document.getElementById('custom-name-input');
     const iconInput = document.getElementById('custom-icon-input');
     const contentInput = document.getElementById('custom-content-input');
     const tasksInput = document.getElementById('custom-tasks-input');
-    const saveBtn = document.getElementById('save-custom-btn');
-
-    if (!modal || !modalTitle || !nameInput || !iconInput || !contentInput || !tasksInput || !saveBtn) {
-        console.error("Missing elements for custom pillar/skill modal.");
-        return;
-    }
 
     // Reset form fields
     nameInput.value = '';
@@ -2469,8 +2766,410 @@ function showCustomPillarSkillModal(mode, entityId = null) {
     showModal('custom-pillar-skill-modal');
 }
 
+let currentQuiz = null; // Stores the current quiz being displayed
+let currentQuizScore = 0; // Stores the score for the current attempt
+
+/** Shows the quiz modal for taking or editing quizzes. */
+function showQuizModal(mode, quizId = null) {
+    const modal = document.getElementById('quiz-modal');
+    const title = document.getElementById('quiz-modal-title');
+    const questionsContainer = document.getElementById('quiz-questions-container');
+    const resultContainer = document.getElementById('quiz-result-container');
+    const submitBtn = document.getElementById('submit-quiz-btn');
+    const closeBtn = document.getElementById('close-quiz-btn');
+
+    // Clear previous state
+    questionsContainer.innerHTML = '';
+    resultContainer.classList.add('hidden');
+    submitBtn.classList.remove('hidden');
+    submitBtn.disabled = false;
+    closeBtn.classList.add('hidden');
+    currentQuiz = null;
+    currentQuizScore = 0;
+
+    if (mode === 'take-quiz' && quizId) {
+        const quiz = AppState.quizzes.find(q => q.id === quizId);
+        if (!quiz) { showMessage('Quiz not found!', false); return; }
+        currentQuiz = JSON.parse(JSON.stringify(quiz)); // Deep copy to modify
+        title.textContent = currentQuiz.name;
+
+        currentQuiz.questions.forEach((qData, qIndex) => {
+            questionsContainer.innerHTML += `
+                <div class="mb-4">
+                    <p class="font-semibold text-primary mb-2">${qIndex + 1}. ${qData.q}</p>
+                    <div class="space-y-2">
+                        ${qData.options.map((option, oIndex) => `
+                            <label class="flex items-center text-secondary">
+                                <input type="radio" name="question-${qIndex}" value="${option}" class="mr-2 accent-brand-primary">
+                                <span>${option}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        });
+        showModal('quiz-modal');
+
+    } else if (mode === 'create-quiz') {
+        title.textContent = 'Create New Quiz';
+        // Simplified input for quiz creation - add questions one by one
+        questionsContainer.innerHTML = `
+            <div class="mb-4">
+                <label for="new-quiz-name" class="block font-semibold mb-2 text-primary">Quiz Title:</label>
+                <input type="text" id="new-quiz-name" placeholder="e.g., Nutrition Basics" class="w-full p-2 border rounded-md mb-3">
+            </div>
+            <div id="quiz-question-builder" class="space-y-4 mb-4">
+                <p class="text-secondary italic">Add your questions below.</p>
+            </div>
+            <button id="add-quiz-question-btn" class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded-lg shadow-sm hover:bg-blue-600 transition-colors">Add Question</button>
+        `;
+        submitBtn.textContent = 'Save Quiz';
+        submitBtn.classList.remove('hidden');
+        closeBtn.classList.remove('hidden'); // Allow closing quiz creator
+
+        document.getElementById('add-quiz-question-btn').addEventListener('click', addQuizQuestionToBuilder);
+        showModal('quiz-modal');
+
+    } else if (mode === 'edit-quiz' && quizId) {
+        title.textContent = 'Edit Quiz';
+        const quizToEdit = AppState.quizzes.find(q => q.id === quizId);
+        if (!quizToEdit) { showMessage('Quiz not found!', false); return; }
+        currentQuiz = JSON.parse(JSON.stringify(quizToEdit)); // Deep copy for editing
+
+        questionsContainer.innerHTML = `
+            <div class="mb-4">
+                <label for="new-quiz-name" class="block font-semibold mb-2 text-primary">Quiz Title:</label>
+                <input type="text" id="new-quiz-name" value="${currentQuiz.name}" class="w-full p-2 border rounded-md mb-3">
+            </div>
+            <div id="quiz-question-builder" class="space-y-4 mb-4"></div>
+            <button id="add-quiz-question-btn" class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded-lg shadow-sm hover:bg-blue-600 transition-colors">Add Question</button>
+        `;
+        submitBtn.textContent = 'Save Changes';
+        submitBtn.classList.remove('hidden');
+        closeBtn.classList.remove('hidden');
+
+        currentQuiz.questions.forEach((qData, qIndex) => addQuizQuestionToBuilder(qData, qIndex));
+        document.getElementById('add-quiz-question-btn').addEventListener('click', addQuizQuestionToBuilder);
+        showModal('quiz-modal');
+    }
+
+    // Common listeners for quiz modal
+    // Remove old listeners before adding new ones
+    const newSubmitBtn = submitBtn.cloneNode(true);
+    submitBtn.parentNode.replaceChild(newSubmitBtn, submitBtn);
+    const newCloseBtn = closeBtn.cloneNode(true);
+    closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+
+    newSubmitBtn.addEventListener('click', () => {
+        if (mode === 'take-quiz') {
+            submitQuizAttempt();
+        } else if (mode === 'create-quiz' || mode === 'edit-quiz') {
+            saveQuizFromBuilder(quizId);
+        }
+    });
+    newCloseBtn.addEventListener('click', () => hideModal('quiz-modal'));
+}
+
+/** Adds a question input block to the quiz builder modal. */
+function addQuizQuestionToBuilder(questionData = null, index = null) {
+    const builder = document.getElementById('quiz-question-builder');
+    const qId = index !== null ? index : builder.children.length; // Use index or new number
+
+    const questionDiv = document.createElement('div');
+    questionDiv.className = 'border p-3 rounded-md bg-gray-50 relative';
+    questionDiv.innerHTML = `
+        <button class="remove-quiz-question-btn absolute top-2 right-2 text-red-500 hover:text-red-700 text-xl leading-none">&times;</button>
+        <label for="q-${qId}" class="block font-semibold mb-1 text-primary">Question ${qId + 1}:</label>
+        <input type="text" id="q-${qId}" class="w-full p-2 border rounded-md mb-2" placeholder="e.g., What is the capital of Philippines?" value="${questionData ? questionData.q : ''}">
+
+        <label class="block font-semibold mb-1 text-primary">Options (one per line):</label>
+        <textarea id="options-${qId}" rows="3" class="w-full p-2 border rounded-md mb-2" placeholder="Option 1&#10;Option 2&#10;Option 3">${questionData && questionData.options ? questionData.options.join('\n') : ''}</textarea>
+
+        <label for="a-${qId}" class="block font-semibold mb-1 text-primary">Correct Answer:</label>
+        <input type="text" id="a-${qId}" class="w-full p-2 border rounded-md" placeholder="Must match one of the options" value="${questionData ? questionData.a : ''}">
+    `;
+    builder.appendChild(questionDiv);
+
+    questionDiv.querySelector('.remove-quiz-question-btn').addEventListener('click', (e) => {
+        e.target.closest('.border').remove();
+    });
+}
+
+/** Submits a quiz attempt and shows results. */
+function submitQuizAttempt() {
+    if (!currentQuiz) return;
+
+    let correctAnswers = 0;
+    const questionsCount = currentQuiz.questions.length;
+
+    currentQuiz.questions.forEach((qData, qIndex) => {
+        const selectedOption = document.querySelector(`input[name="question-${qIndex}"]:checked`);
+        if (selectedOption && selectedOption.value === qData.a) {
+            correctAnswers++;
+        }
+    });
+
+    currentQuizScore = correctAnswers;
+    const scoreElement = document.getElementById('quiz-score');
+    const feedbackElement = document.getElementById('quiz-feedback');
+    const resultContainer = document.getElementById('quiz-result-container');
+    const submitBtn = document.getElementById('submit-quiz-btn');
+    const closeBtn = document.getElementById('close-quiz-btn');
+
+    scoreElement.textContent = `You scored ${correctAnswers} out of ${questionsCount}!`;
+    if (correctAnswers === questionsCount) {
+        feedbackElement.textContent = 'Excellent! You got all of them right! 🎉';
+        scoreElement.style.color = 'var(--completed-day-text)';
+        AppState.tokens += QUIZ_TOKEN_REWARD_CORRECT_ANSWER * questionsCount;
+        showMessage(`Quiz complete! Earned ${QUIZ_TOKEN_REWARD_CORRECT_ANSWER * questionsCount} tokens!`, true);
+        currentQuiz.completed = true; // Mark as completed
+        currentQuiz.score = correctAnswers;
+        currentQuiz.dateCompleted = formatDate(new Date());
+
+    } else if (correctAnswers > questionsCount / 2) {
+        feedbackElement.textContent = 'Great job! Keep learning. 👍';
+        scoreElement.style.color = 'var(--brand-primary)';
+        AppState.tokens += QUIZ_TOKEN_REWARD_CORRECT_ANSWER * correctAnswers;
+        showMessage(`Quiz complete! Earned ${QUIZ_TOKEN_REWARD_CORRECT_ANSWER * correctAnswers} tokens!`, true);
+        currentQuiz.completed = true;
+        currentQuiz.score = correctAnswers;
+        currentQuiz.dateCompleted = formatDate(new Date());
+    } else {
+        feedbackElement.textContent = 'Good effort! Review the material and try again. 💪';
+        scoreElement.style.color = 'var(--missed-day-text)';
+        showMessage('Quiz complete. Try again for more tokens!', false);
+        currentQuiz.completed = false; // Not fully completed for rewards/badges
+        currentQuiz.score = correctAnswers;
+        currentQuiz.dateCompleted = formatDate(new Date());
+    }
+
+    resultContainer.classList.remove('hidden');
+    submitBtn.classList.add('hidden');
+    closeBtn.classList.remove('hidden');
+
+    // Update the original quiz in AppState
+    const originalQuizIndex = AppState.quizzes.findIndex(q => q.id === currentQuiz.id);
+    if (originalQuizIndex !== -1) {
+        AppState.quizzes[originalQuizIndex] = currentQuiz;
+    } else {
+        // This should not happen if currentQuiz is from AppState, but as a fallback
+        AppState.quizzes.push(currentQuiz);
+    }
+    saveState();
+    checkAchievements();
+    renderDailyFocus(); // Update token count
+}
+
+/** Saves a new or edited quiz from the builder. */
+function saveQuizFromBuilder(existingQuizId = null) {
+    const quizName = document.getElementById('new-quiz-name').value.trim();
+    if (!quizName) {
+        showMessage('Please enter a quiz title!', false);
+        return;
+    }
+
+    const questions = [];
+    const questionBlocks = document.querySelectorAll('#quiz-question-builder > div');
+    let allValid = true;
+
+    questionBlocks.forEach((block, index) => {
+        const qInput = block.querySelector(`input[id="q-${index}"]`);
+        const optionsInput = block.querySelector(`textarea[id="options-${index}"]`);
+        const aInput = block.querySelector(`input[id="a-${index}"]`);
+
+        const q = qInput.value.trim();
+        const options = optionsInput.value.split('\n').map(opt => opt.trim()).filter(opt => opt !== '');
+        const a = aInput.value.trim();
+
+        if (!q || options.length < 2 || !a || !options.includes(a)) {
+            allValid = false;
+            showMessage(`Question ${index + 1} is incomplete or has invalid options/answer.`, false);
+            return;
+        }
+        questions.push({ q, options, a });
+    });
+
+    if (!allValid || questions.length === 0) {
+        showMessage('Please ensure all questions are complete and have at least 2 options, and the correct answer matches an option.', false);
+        return;
+    }
+
+    if (existingQuizId) {
+        const index = AppState.quizzes.findIndex(q => q.id === existingQuizId);
+        if (index !== -1) {
+            AppState.quizzes[index].name = quizName;
+            AppState.quizzes[index].questions = questions;
+            AppState.quizzes[index].completed = false; // Reset completion on edit
+            AppState.quizzes[index].score = 0;
+            AppState.quizzes[index].dateCompleted = null;
+            showMessage('Quiz updated successfully!', true);
+        }
+    } else {
+        AppState.quizzes.push({
+            id: generateUUID(),
+            name: quizName,
+            questions: questions,
+            completed: false,
+            score: 0,
+            dateCompleted: null
+        });
+        showMessage('New quiz created successfully!', true);
+    }
+    saveState();
+    hideModal('quiz-modal');
+    renderQuizzesInSettings();
+}
+
+/** Shows the modal for adding/editing learning resources. */
+function showLearningResourceModal(mode, resourceId = null) {
+    const modal = document.getElementById('learning-resource-modal');
+    const title = document.getElementById('resource-modal-title');
+    const nameInput = document.getElementById('resource-name-input');
+    const urlInput = document.getElementById('resource-url-input');
+    const pillarSelect = document.getElementById('resource-pillar-select');
+    const saveBtn = document.getElementById('save-resource-btn');
+
+    // Populate pillar/skill select
+    pillarSelect.innerHTML = '<option value="">-- Select Pillar/Skill --</option>';
+    pillarsData.forEach(p => {
+        pillarSelect.innerHTML += `<option value="${p.id}">${p.icon} ${p.title} (Pillar)</option>`;
+    });
+    skillsData.forEach(s => {
+        pillarSelect.innerHTML += `<option value="${s.id}">${s.icon} ${s.title} (Skill)</option>`;
+    });
+
+    // Reset form fields
+    nameInput.value = '';
+    urlInput.value = '';
+    pillarSelect.value = '';
+
+    if (mode === 'add-resource') {
+        title.textContent = 'Add New Learning Resource';
+        saveBtn.textContent = 'Save Resource';
+    } else if (mode === 'edit-resource' && resourceId) {
+        title.textContent = 'Edit Learning Resource';
+        saveBtn.textContent = 'Save Changes';
+        const resource = AppState.learningResources.find(r => r.id === resourceId);
+        if (resource) {
+            nameInput.value = resource.name;
+            urlInput.value = resource.url;
+            pillarSelect.value = resource.associatedEntityId;
+        }
+    }
+
+    // Remove old listeners to prevent duplicates
+    const newSaveBtn = saveBtn.cloneNode(true);
+    saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+    const newCancelBtn = document.getElementById('cancel-resource-btn').cloneNode(true);
+    document.getElementById('cancel-resource-btn').parentNode.replaceChild(newCancelBtn, document.getElementById('cancel-resource-btn'));
+
+    newSaveBtn.addEventListener('click', () => saveLearningResource(mode, resourceId));
+    newCancelBtn.addEventListener('click', () => hideModal('learning-resource-modal'));
+
+    showModal('learning-resource-modal');
+}
+
+/** Saves a new or edited learning resource. */
+function saveLearningResource(mode, resourceId = null) {
+    const name = document.getElementById('resource-name-input').value.trim();
+    const url = document.getElementById('resource-url-input').value.trim();
+    const associatedEntityId = document.getElementById('resource-pillar-select').value;
+
+    if (!name || !url || !associatedEntityId) {
+        showMessage('Please fill in all fields.', false);
+        return;
+    }
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        showMessage('Please enter a valid URL (starting with http:// or https://).', false);
+        return;
+    }
+
+    const newOrUpdatedResource = {
+        id: resourceId || generateUUID(),
+        name,
+        url,
+        associatedEntityId
+    };
+
+    if (mode === 'edit-resource') {
+        const index = AppState.learningResources.findIndex(r => r.id === resourceId);
+        if (index !== -1) {
+            AppState.learningResources[index] = newOrUpdatedResource;
+            showMessage('Learning resource updated!', true);
+        }
+    } else { // add-resource
+        AppState.learningResources.push(newOrUpdatedResource);
+        showMessage('Learning resource added!', true);
+    }
+    saveState();
+    hideModal('learning-resource-modal');
+    renderLearningResourcesInSettings(); // Refresh the list in settings
+}
+
+/** Shows the daily micro-challenge modal. */
+function showMicroChallengeModal() {
+    const todayFormatted = formatDate(new Date());
+    let currentMicroChallenge = AppState.microChallenges.find(mc => mc.date === todayFormatted);
+
+    if (!currentMicroChallenge) {
+        shuffleArray(microChallengePool);
+        const selectedChallenge = microChallengePool[0];
+        currentMicroChallenge = {
+            id: generateUUID(),
+            text: selectedChallenge.text,
+            date: todayFormatted,
+            completed: false
+        };
+        AppState.microChallenges.push(currentMicroChallenge);
+        AppState.lastMicroChallengeDate = todayFormatted; // Mark it as generated for today
+        saveState();
+    }
+
+    const microChallengeText = document.getElementById('micro-challenge-text');
+    const completeBtn = document.getElementById('complete-micro-challenge-btn');
+    const skipBtn = document.getElementById('skip-micro-challenge-btn');
+
+    microChallengeText.textContent = currentMicroChallenge.text;
+
+    if (currentMicroChallenge.completed) {
+        completeBtn.textContent = 'Challenge Completed!';
+        completeBtn.disabled = true;
+        skipBtn.classList.add('hidden');
+    } else {
+        completeBtn.textContent = `Complete Challenge (+${MICRO_CHALLENGE_TOKEN_REWARD} Tokens)`;
+        completeBtn.disabled = false;
+        skipBtn.classList.remove('hidden');
+    }
+
+    showModal('micro-challenge-modal');
+
+    // Remove existing listeners before adding new ones
+    const newCompleteBtn = completeBtn.cloneNode(true);
+    completeBtn.parentNode.replaceChild(newCompleteBtn, completeBtn);
+    const newSkipBtn = skipBtn.cloneNode(true);
+    skipBtn.parentNode.replaceChild(newSkipBtn, skipBtn);
+
+    newCompleteBtn.addEventListener('click', () => {
+        if (!currentMicroChallenge.completed) {
+            currentMicroChallenge.completed = true;
+            AppState.tokens += MICRO_CHALLENGE_TOKEN_REWARD;
+            saveState();
+            checkAchievements();
+            showMessage(`Micro-challenge completed! You earned ${MICRO_CHALLENGE_TOKEN_REWARD} tokens!`, true);
+            hideModal('micro-challenge-modal');
+            renderDashboard(); // Refresh dashboard token display
+        }
+    });
+
+    newSkipBtn.addEventListener('click', () => {
+        hideModal('micro-challenge-modal');
+        showMessage('Micro-challenge skipped for today.', false);
+    });
+}
+
 
 // --- Achievements Logic ---
+/** Checks for and unlocks achievements. */
 function checkAchievements() {
     // Consistency Streaks
     if (AppState.currentStreak >= 7 && !AppState.earnedBadges.has('consistency-streak-7')) {
@@ -2480,6 +3179,10 @@ function checkAchievements() {
     if (AppState.currentStreak >= 30 && !AppState.earnedBadges.has('consistency-streak-30')) {
         AppState.earnedBadges.add('consistency-streak-30');
         showMessage('Achievement Unlocked: 30-Day Streak! 🌟', true);
+    }
+    if (AppState.currentStreak >= 90 && !AppState.earnedBadges.has('consistency-streak-90')) {
+        AppState.earnedBadges.add('consistency-streak-90');
+        showMessage('Achievement Unlocked: 90-Day Streak! 🏆', true);
     }
 
     // Halfway Hero
@@ -2495,35 +3198,72 @@ function checkAchievements() {
     }
 
     // Token Tycoon
-    if (AppState.tokens >= 50 && !AppState.earnedBadges.has('token-tycoon')) {
-        AppState.earnedBadges.add('token-tycoon');
-        showMessage('Achievement Unlocked: Token Tycoon! 💰', true);
+    if (AppState.tokens >= 50 && !AppState.earnedBadges.has('token-tycoon-50')) {
+        AppState.earnedBadges.add('token-tycoon-50');
+        showMessage('Achievement Unlocked: Token Tycoon (50)! 💰', true);
+    }
+    if (AppState.tokens >= 100 && !AppState.earnedBadges.has('token-tycoon-100')) {
+        AppState.earnedBadges.add('token-tycoon-100');
+        showMessage('Achievement Unlocked: Token Tycoon (100)! 💎', true);
     }
 
-    // Skill Explorer (completed tasks across different skills)
+    // Skill Explorer
     const distinctSkillsCompleted = new Set(Object.keys(AppState.completedSkillTasks).filter(skillId => AppState.completedSkillTasks[skillId].length > 0));
-    if (distinctSkillsCompleted.size >= 5 && !AppState.earnedBadges.has('skill-explorer')) {
-        AppState.earnedBadges.add('skill-explorer');
-        showMessage('Achievement Unlocked: Skill Explorer! 🗺️', true);
+    if (distinctSkillsCompleted.size >= 5 && !AppState.earnedBadges.has('skill-explorer-5')) {
+        AppState.earnedBadges.add('skill-explorer-5');
+        showMessage('Achievement Unlocked: Skill Explorer (5)! 🗺️', true);
+    }
+    if (distinctSkillsCompleted.size >= 10 && !AppState.earnedBadges.has('skill-explorer-10')) {
+        AppState.earnedBadges.add('skill-explorer-10');
+        showMessage('Achievement Unlocked: Skill Explorer (10)! 🧭', true);
     }
 
-    // Pillar Powerhouse (completed tasks across different pillars)
+    // Pillar Powerhouse
     const distinctPillarsCompleted = new Set(Object.keys(AppState.completedPillarTasks).filter(pillarId => AppState.completedPillarTasks[pillarId].length > 0));
-    if (distinctPillarsCompleted.size >= 5 && !AppState.earnedBadges.has('pillar-powerhouse')) {
-        AppState.earnedBadges.add('pillar-powerhouse');
-        showMessage('Achievement Unlocked: Pillar Powerhouse! 🏛️', true);
+    if (distinctPillarsCompleted.size >= 5 && !AppState.earnedBadges.has('pillar-powerhouse-5')) {
+        AppState.earnedBadges.add('pillar-powerhouse-5');
+        showMessage('Achievement Unlocked: Pillar Powerhouse (5)! 🏛️', true);
+    }
+    if (distinctPillarsCompleted.size >= 10 && !AppState.earnedBadges.has('pillar-powerhouse-10')) {
+        AppState.earnedBadges.add('pillar-powerhouse-10');
+        showMessage('Achievement Unlocked: Pillar Powerhouse (10)! 🏰', true);
     }
 
-    // Goal Getter (completed first global goal)
-    if (AppState.globalGoals.some(g => g.completed) && !AppState.earnedBadges.has('goal-getter')) {
-        AppState.earnedBadges.add('goal-getter');
-        showMessage('Achievement Unlocked: Goal Getter! 🎯', true);
+    // Goal Getter
+    if (AppState.globalGoals.some(g => g.completed) && !AppState.earnedBadges.has('goal-getter-first')) {
+        AppState.earnedBadges.add('goal-getter-first');
+        showMessage('Achievement Unlocked: First Goal Getter! 🎯', true);
+    }
+    const completedGlobalGoalsCount = AppState.globalGoals.filter(g => g.completed).length;
+    if (completedGlobalGoalsCount >= 5 && !AppState.earnedBadges.has('goal-getter-5')) {
+        AppState.earnedBadges.add('goal-getter-5');
+        showMessage('Achievement Unlocked: Goal Master (5)! 🏆', true);
     }
 
     // Shopaholic
     if (AppState.purchasedShopItems.size >= 3 && !AppState.earnedBadges.has('shopaholic')) {
         AppState.earnedBadges.add('shopaholic');
         showMessage('Achievement Unlocked: Shopaholic! 🛍️', true);
+    }
+
+    // Quiz Master
+    const perfectQuizzes = AppState.quizzes.filter(q => q.completed && q.score === q.questions.length);
+    if (perfectQuizzes.length >= 3 && !AppState.earnedBadges.has('quiz-master')) {
+        AppState.earnedBadges.add('quiz-master');
+        showMessage('Achievement Unlocked: Quiz Master! 🧠', true);
+    }
+
+    // Journal Keeper
+    if (AppState.journalEntries.length >= 10 && !AppState.earnedBadges.has('journal-keeper')) {
+        AppState.earnedBadges.add('journal-keeper');
+        showMessage('Achievement Unlocked: Journal Keeper! 📓', true);
+    }
+
+    // Micro-Challenge Pro
+    const completedMicroChallenges = AppState.microChallenges.filter(mc => mc.completed).length;
+    if (completedMicroChallenges >= 5 && !AppState.earnedBadges.has('micro-challenge-pro')) {
+        AppState.earnedBadges.add('micro-challenge-pro');
+        showMessage('Achievement Unlocked: Micro-Challenge Pro! ⚡', true);
     }
 
     saveState();
@@ -2559,13 +3299,15 @@ document.addEventListener('DOMContentLoaded', () => {
         AppState.userName = userName;
         AppState.difficulty = document.getElementById('difficulty-select').value;
         AppState.isPersonalized = true;
-        AppState.startDate = new Date(); // Set start date when personalization is complete
-        AppState.startDate.setHours(0,0,0,0); // Normalize to start of day
-        AppState.lastVisitDate = formatDate(new Date());
+        // Set startDate to the beginning of today in local timezone only when personalization is complete
+        AppState.startDate = new Date();
+        AppState.startDate.setHours(0, 0, 0, 0);
+        AppState.lastVisitDate = formatDate(new Date()); // Record today as last visit
+        AppState.today = 1; // Start on Day 1
         saveState();
         document.getElementById('personalization-menu').classList.add('hidden');
         document.getElementById('app-main-content').classList.remove('hidden');
-        updateView('dashboard'); // Go to dashboard after personalization
+        updateView('dashboard');
         showMessage('Welcome to your Glow-Up Journey!', true);
     });
 
@@ -2578,12 +3320,11 @@ document.addEventListener('DOMContentLoaded', () => {
             input.value = '';
             saveState();
             renderUserAffirmations('user-affirmations-list');
-            showMessage('Affirmation added!');
+            showMessage('Affirmation added!', true);
         } else {
             showMessage('Please enter an affirmation.', false);
         }
     });
-
 
     // Navigation
     document.querySelectorAll('.nav-link').forEach(link => {
@@ -2622,20 +3363,20 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        AppState.dailyActivityMap[todayFormatted] = AppState.dailyActivityMap[todayFormatted] || {};
+
         if (AppState.restDaysAvailable > 0) {
             AppState.restDaysAvailable--;
             AppState.completedDays.add(currentChallengeDay);
-            // Don't update streak or add tokens for rest days, just mark as complete
-            AppState.dailyActivityMap[todayFormatted] = AppState.dailyActivityMap[todayFormatted] || {};
             AppState.dailyActivityMap[todayFormatted].main = true;
             AppState.dailyActivityMap[todayFormatted].skippedWithRestDay = true;
             showMessage('Rest day used! Mission marked as complete.', true);
         } else {
             AppState.completedDays.add(currentChallengeDay);
             AppState.currentStreak++;
-            AppState.dailyActivityMap[todayFormatted] = AppState.dailyActivityMap[todayFormatted] || {};
             AppState.dailyActivityMap[todayFormatted].main = true;
-            
+            AppState.dailyActivityMap[todayFormatted].skippedWithRestDay = false;
+
             // Earn tokens for completing main mission
             AppState.tokens += 1;
             showMessage('Mission complete! You earned 1 Glow Token! ✨', true);
@@ -2644,11 +3385,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (AppState.currentStreak > AppState.bestStreak) {
             AppState.bestStreak = AppState.currentStreak;
         }
-        
+
         saveState();
-        checkAchievements(); // Check achievements after state change
+        checkAchievements();
         renderDashboard();
-        renderCalendar(); // Update calendar colors
+        renderCalendar();
     });
 
     // Close missed reason modal on outside click
@@ -2662,7 +3403,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('submit-missed-reason-btn').addEventListener('click', (e) => {
         const reasonInput = document.getElementById('missed-reason-input');
         const reason = reasonInput.value.trim();
-        const dateKey = e.target.dataset.dateKey; 
+        const dateKey = e.target.dataset.dateKey;
 
         if (reason && dateKey) {
             AppState.dailyActivityMap[dateKey] = AppState.dailyActivityMap[dateKey] || {};
@@ -2670,8 +3411,8 @@ document.addEventListener('DOMContentLoaded', () => {
             saveState();
             showMessage('Missed reason recorded.', true);
             hideModal('missed-reason-modal');
-            renderDashboard(); // Re-render to ensure streak updates
-            renderCalendar(); // Update calendar if needed
+            renderDashboard();
+            renderCalendar();
         } else {
             showMessage('Please enter a reason.', false);
         }
@@ -2681,13 +3422,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('back-to-pillars-btn').addEventListener('click', () => {
         document.getElementById('pillar-detail-view').classList.add('hidden');
         document.getElementById('pillars').classList.remove('hidden');
-        updateView('pillars'); // Re-render pillars list to ensure consistency
+        updateView('pillars');
     });
 
     document.getElementById('back-to-skills-btn').addEventListener('click', () => {
         document.getElementById('skill-detail-view').classList.add('hidden');
         document.getElementById('skills').classList.remove('hidden');
-        updateView('skills'); // Re-render skills list to ensure consistency
+        updateView('skills');
     });
 
     // Daily Schedule buttons
@@ -2705,7 +3446,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let tokensEarned = TOKEN_FOR_DAILY_FOCUS_COMPLETION;
             if (AppState.nextDailyFocusBonus > 0) {
                 tokensEarned *= AppState.nextDailyFocusBonus;
-                AppState.nextDailyFocusBonus = 0; // Reset bonus after use
+                AppState.nextDailyFocusBonus = 0;
                 showMessage(`Bonus! You earned ${tokensEarned} Glow Tokens! ✨`, true);
             } else {
                 showMessage(`You earned ${tokensEarned} Glow Tokens! ✨`, true);
@@ -2714,8 +3455,8 @@ document.addEventListener('DOMContentLoaded', () => {
             AppState.dailyFocusCompletedToday = true;
             saveState();
             checkAchievements();
-            renderDailyFocus(); // Re-render to update token display and button state
-            renderDashboard(); // Update tokens on dashboard as well
+            renderDailyFocus();
+            renderDashboard();
         } else {
             showMessage('Please complete all daily focus tasks first!', false);
         }
@@ -2725,35 +3466,35 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('save-journal-btn').addEventListener('click', () => {
         const journalInput = document.getElementById('journal-input');
         const journalMoodSelect = document.getElementById('journal-mood-select');
+        const journalTagsInput = document.getElementById('journal-tags-input');
         const todayFormatted = formatDate(new Date());
 
         const content = journalInput.value.trim();
         const mood = journalMoodSelect.value;
-        const highlight = AppState.dailyActivityMap[todayFormatted]?.highlight || ''; // Get highlight from daily activity
+        const tags = journalTagsInput.value.split(/[, ]+/).map(tag => tag.trim()).filter(tag => tag !== ''); // Split by space or comma
+        const highlight = AppState.dailyActivityMap[todayFormatted]?.highlight || '';
 
-        if (content || mood || highlight) {
-            // Check if an entry for today already exists
+        if (content || mood || highlight || tags.length > 0) {
             const existingEntryIndex = AppState.journalEntries.findIndex(entry => entry.date === todayFormatted);
             if (existingEntryIndex !== -1) {
-                // Update existing entry
                 AppState.journalEntries[existingEntryIndex].content = content;
                 AppState.journalEntries[existingEntryIndex].mood = mood;
                 AppState.journalEntries[existingEntryIndex].highlight = highlight;
-                // Tags could be added here if you implement tagging in the future
+                AppState.journalEntries[existingEntryIndex].tags = tags;
             } else {
-                // Add new entry
                 AppState.journalEntries.push({
                     id: generateUUID(),
                     date: todayFormatted,
                     mood: mood,
                     highlight: highlight,
                     content: content,
-                    tags: [] // Placeholder for future tagging
+                    tags: tags
                 });
             }
             saveState();
+            checkAchievements(); // Check for journal-keeper badge
             showMessage('Journal entry saved!', true);
-            renderFilteredJournalEntries(); // Re-render list
+            renderFilteredJournalEntries();
         } else {
             showMessage('Journal entry is empty. Nothing to save.', false);
         }
@@ -2766,7 +3507,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('journal-filter-date').value = '';
         document.getElementById('journal-search-input').value = '';
         renderFilteredJournalEntries();
-        showMessage('Journal filters cleared.');
+        showMessage('Journal filters cleared.', true);
     });
 
     // Settings Tab Navigation
@@ -2778,13 +3519,11 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
             document.getElementById(`settings-tab-${e.target.dataset.tab}`).classList.remove('hidden');
 
-            // Re-render relevant sections if they are active
             if (e.target.dataset.tab === 'themes') {
-                applyTheme(AppState.theme, false); // Re-apply theme to ensure custom builder visibility is correct
+                applyTheme(AppState.theme, false);
             }
             if (e.target.dataset.tab === 'content') {
-                renderUserAffirmations('settings-user-affirmations-list');
-                renderSettings(); // Re-render custom pillar/skill lists
+                renderSettings(); // Re-render all content lists
             }
         });
     });
@@ -2793,28 +3532,54 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('settings-user-name').addEventListener('input', (e) => {
         AppState.userName = e.target.value.trim();
         saveState();
-        renderDashboard(); // Update name on dashboard
+        renderDashboard();
     });
 
     document.getElementById('settings-difficulty-select').addEventListener('change', (e) => {
         AppState.difficulty = e.target.value;
         saveState();
-        // Potentially adjust daily tasks based on difficulty if desired
-        showMessage('Difficulty setting updated.');
+        showMessage('Difficulty setting updated.', true);
     });
 
     document.getElementById('notification-toggle').addEventListener('change', (e) => {
         AppState.notificationsEnabled = e.target.checked;
         saveState();
-        showMessage(`Notifications ${AppState.notificationsEnabled ? 'enabled' : 'disabled'}.`);
+        applyAccessibilitySettings(); // This will show/hide time setting
+        showMessage(`Notifications ${AppState.notificationsEnabled ? 'enabled' : 'disabled'}.`, true);
+    });
+
+    document.getElementById('notification-time').addEventListener('change', (e) => {
+        AppState.notificationTime = e.target.value;
+        saveState();
+        showMessage('Notification time saved.', true);
     });
 
     document.getElementById('reduce-motion-toggle').addEventListener('change', (e) => {
         AppState.reduceMotion = e.target.checked;
         saveState();
         applyAccessibilitySettings();
-        showMessage(`Reduce motion ${AppState.reduceMotion ? 'enabled' : 'disabled'}.`);
+        showMessage(`Reduce motion ${AppState.reduceMotion ? 'enabled' : 'disabled'}.`, true);
     });
+
+    document.getElementById('font-size-select').addEventListener('change', (e) => {
+        AppState.fontSize = e.target.value;
+        saveState();
+        applyFontSettings();
+        showMessage('Font size updated.', true);
+    });
+
+    document.getElementById('font-family-select').addEventListener('change', (e) => {
+        AppState.fontFamily = e.target.value;
+        saveState();
+        applyFontSettings();
+        showMessage('Font family updated.', true);
+    });
+
+    document.getElementById('start-onboarding-tour-btn').addEventListener('click', () => {
+        showMessage('Onboarding tour would start here! (Feature coming soon)', true);
+        // You could implement a series of modals or highlight elements here.
+    });
+
 
     document.getElementById('settings-theme-select').addEventListener('change', (e) => {
         applyTheme(e.target.value);
@@ -2822,7 +3587,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('save-custom-theme-btn').addEventListener('click', saveCustomTheme);
 
-    // Custom theme color inputs
     document.querySelectorAll('#custom-theme-builder .color-input').forEach(input => {
         input.addEventListener('input', () => {
             const propName = `--${input.id.replace('custom-', '')}`;
@@ -2839,7 +3603,7 @@ document.addEventListener('DOMContentLoaded', () => {
             input.value = '';
             saveState();
             renderUserAffirmations('settings-user-affirmations-list');
-            showMessage('Affirmation added to your custom list!');
+            showMessage('Affirmation added to your custom list!', true);
         } else {
             showMessage('Please enter an affirmation.', false);
         }
@@ -2872,28 +3636,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (customModalMode === 'add-pillar') {
             AppState.customPillars.push(newOrUpdatedEntity);
-            pillarsData = [...defaultPillarsData, ...AppState.customPillars]; // Update global reference
-            showMessage('Custom Pillar added!');
+            pillarsData = [...defaultPillarsData, ...AppState.customPillars];
+            showMessage('Custom Pillar added!', true);
         } else if (customModalMode === 'edit-pillar') {
             const index = AppState.customPillars.findIndex(p => p.id === customModalEntityId);
             if (index !== -1) AppState.customPillars[index] = newOrUpdatedEntity;
-            pillarsData = [...defaultPillarsData, ...AppState.customPillars]; // Update global reference
-            showMessage('Custom Pillar updated!');
+            pillarsData = [...defaultPillarsData, ...AppState.customPillars];
+            showMessage('Custom Pillar updated!', true);
         } else if (customModalMode === 'add-skill') {
             AppState.customSkills.push(newOrUpdatedEntity);
-            skillsData = [...defaultSkillsData, ...AppState.customSkills]; // Update global reference
-            showMessage('Custom Skill added!');
+            skillsData = [...defaultSkillsData, ...AppState.customSkills];
+            showMessage('Custom Skill added!', true);
         } else if (customModalMode === 'edit-skill') {
             const index = AppState.customSkills.findIndex(s => s.id === customModalEntityId);
             if (index !== -1) AppState.customSkills[index] = newOrUpdatedEntity;
-            skillsData = [...defaultSkillsData, ...AppState.customSkills]; // Update global reference
-            showMessage('Custom Skill updated!');
+            skillsData = [...defaultSkillsData, ...AppState.customSkills];
+            showMessage('Custom Skill updated!', true);
         }
 
         saveState();
         hideModal('custom-pillar-skill-modal');
         renderSettings(); // Re-render settings to show updated lists
     });
+
+    // Learning Resources Management
+    document.getElementById('add-learning-resource-btn').addEventListener('click', () => showLearningResourceModal('add-resource'));
+
+    // Quiz Management
+    document.getElementById('add-quiz-btn').addEventListener('click', () => showQuizModal('create-quiz'));
+
+    // Daily Micro-Challenge Button
+    document.getElementById('start-micro-challenge-btn').addEventListener('click', showMicroChallengeModal);
 
 
     // Data Management
@@ -2908,7 +3681,7 @@ document.addEventListener('DOMContentLoaded', () => {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        showMessage('Data exported successfully!');
+        showMessage('Data exported successfully!', true);
     });
 
     const importDataInput = document.getElementById('import-data-input');
@@ -2930,8 +3703,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 reader.onload = (e) => {
                     try {
                         const importedState = JSON.parse(e.target.result);
-                        // Validate importedState structure if necessary before applying
-                        if (importedState.isPersonalized !== undefined && importedState.userName !== undefined) {
+                        // Basic validation: check for a few key properties
+                        if (importedState.isPersonalized !== undefined && importedState.userName !== undefined && importedState.completedDays !== undefined) {
                             localStorage.setItem('glowUpAppState', JSON.stringify(importedState));
                             location.reload(); // Reload to apply new state
                         } else {
@@ -2950,12 +3723,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.getElementById('reset-progress-btn').addEventListener('click', () => {
-        // Use a custom modal for confirmation instead of alert/confirm
         const confirmReset = document.createElement('div');
         confirmReset.className = 'modal-overlay';
         confirmReset.innerHTML = `
             <div class="card p-6 w-11/12 max-w-sm text-center">
-                <h3 class="font-bold text-xl mb-4 text-red-600">Reset All Progress?</h3>
+                <h3 class="font-bold text-xl mb-4 text-red-600 text-primary">Reset All Progress?</h3>
                 <p class="text-secondary mb-6">Are you sure you want to reset all your progress? This cannot be undone.</p>
                 <div class="flex justify-center space-x-4">
                     <button id="cancel-reset-btn" class="bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors shadow-sm">Cancel</button>
@@ -2979,4 +3751,3 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('goto-daily-focus-btn').addEventListener('click', () => updateView('daily-focus'));
     document.getElementById('view-active-goals-btn').addEventListener('click', () => updateView('goals'));
 });
-
